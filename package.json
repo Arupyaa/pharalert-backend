@@ -1,0 +1,31 @@
+{
+  "name": "pharalert-backend",
+  "version": "1.0.0",
+  "description": "This is PharALert backend repo",
+  "homepage": "https://github.com/Arupyaa/pharalert-backend#readme",
+  "bugs": {
+    "url": "https://github.com/Arupyaa/pharalert-backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Arupyaa/pharalert-backend.git"
+  },
+  "license": "ISC",
+  "author": "arupyaa",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "seed": "node seed-fixed.js && node seed-sub-repMed.js && node seed-inventory.js && node seed-purchase-cycle.js"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "dayjs": "^1.11.20",
+    "dotenv": "^17.4.2",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.8.0"
+  }
+}

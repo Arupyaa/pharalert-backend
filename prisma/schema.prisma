@@ -1,0 +1,478 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+//////////////////////
+// ENUMS
+//////////////////////
+
+enum AdjustmentType {
+  IN
+  OUT
+}
+
+enum AdjustmentReason {
+  PURCHASE // OUT
+  ORDER // IN
+  LOST // OUT
+  DAMAGED // OUT
+  MANUAL_ADJUSTMENT // IN or OUT
+  OPENING_STOCK // IN
+}
+
+enum AccountStatus {
+  pending
+  rejected
+  active
+  inactive
+}
+
+enum PharmacyStatus {
+  open
+  closed
+}
+
+enum PaymentStatus {
+  not_paid
+  processing_installments
+  fully_paid
+}
+
+enum DemandType {
+  PURCHASED
+  REPLACEMENT_ACCEPTED
+  REPLACEMENT_REFUSED
+  NO_ACTION
+}
+
+enum UserAccountType {
+  free
+  paid
+}
+
+enum ReservationStatus {
+  pending
+  delivered
+}
+
+//////////////////////
+// CORE TABLES
+//////////////////////
+
+model Admin {
+  id           String    @id @default(uuid())
+  userName     String
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+}
+
+model Region {
+  id        BigInt   @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+
+  pharmacies Pharmacy[]
+
+  @@index([name])
+}
+
+model Pharmacy {
+  id            String         @id @default(uuid())
+  regionId      BigInt
+  name          String
+  email         String         @unique
+  passwordHash  String
+  address       String
+  latitude      Float
+  longitude     Float
+  openingHour   String?
+  closingHour   String?
+  currentStatus PharmacyStatus
+  accountStatus AccountStatus
+  createdAt     DateTime       @default(now())
+  deletedAt     DateTime?
+
+  region Region @relation(fields: [regionId], references: [id])
+
+  purchases            Purchase[]
+  orders               Order[]
+  inventory            PharmacyInventory[]
+  demandLogs           DemandLog[]
+  replacements         Replacement[]
+  subscriptions        Subscription[]
+  rejections           Rejection[]
+  inventoryAdjustments InventoryAdjustment[]
+
+  @@index([regionId])
+  @@index([name])
+  @@index([accountStatus])
+}
+
+model MedicationCompany {
+  id            String        @id @default(uuid())
+  companyName   String
+  email         String        @unique
+  passwordHash  String
+  phoneNumber   String
+  accountStatus AccountStatus
+  createdAt     DateTime      @default(now())
+
+  medications   Medication[]
+  orders        Order[]
+  subscriptions Subscription[]
+  rejections    Rejection[]
+
+  @@index([companyName])
+}
+
+model EndUser {
+  id           String          @id @default(uuid())
+  userName     String          @unique
+  email        String          @unique
+  passwordHash String
+  phoneNumber  String
+  accountType  UserAccountType
+  address      String?
+  latitude     Float?
+  longitude    Float?
+  createdAt    DateTime        @default(now())
+  deletedAt    DateTime?
+
+  reservations  Reservation[]
+  subscriptions Subscription[]
+  alerts        StockAlertSubscription[]
+
+  @@index([accountType])
+  @@index([phoneNumber])
+}
+
+//////////////////////
+// SUBSCRIPTIONS
+//////////////////////
+
+model Subscription {
+  id         BigInt  @id @default(autoincrement())
+  pharmacyId String?
+  companyId  String?
+  userId     String?
+
+  planName  String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+
+  pharmacy Pharmacy?          @relation(fields: [pharmacyId], references: [id])
+  company  MedicationCompany? @relation(fields: [companyId], references: [id])
+  user     EndUser?           @relation(fields: [userId], references: [id])
+
+  @@index([pharmacyId])
+  @@index([companyId])
+  @@index([userId])
+  @@index([planName])
+}
+
+//////////////////////
+// MEDICATIONS
+//////////////////////
+
+model MedicationCategory {
+  id           BigInt @id @default(autoincrement())
+  categoryName String
+
+  medications Medication[]
+}
+
+model Medication {
+  id          BigInt    @id @default(autoincrement())
+  brandName   String
+  genericName String
+  categoryId  BigInt
+  companyId   String
+  unitPrice   Decimal
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+
+  category MedicationCategory @relation(fields: [categoryId], references: [id])
+  company  MedicationCompany  @relation(fields: [companyId], references: [id])
+
+  replacementsFrom MedicationReplacement[] @relation("OriginalMedication")
+  replacementsTo   MedicationReplacement[] @relation("ReplacementMedication")
+
+  pharmacyInventory       PharmacyInventory[]
+  demandLogs              DemandLog[]
+  reservationItems        ReservationItem[]
+  orderItems              OrderItem[]
+  stockAlertSubscriptions StockAlertSubscription[]
+  inventoryAdjustments    InventoryAdjustment[]
+  barcodes                MedicationBarcode[]
+  purchaseItems           PurchaseItem[]
+
+  @@index([categoryId])
+  @@index([companyId])
+  @@index([brandName])
+}
+
+model MedicationBarcode {
+  id           BigInt      @id @default(autoincrement())
+  barcode      String     @unique
+  medicationId BigInt
+  medication   Medication @relation(fields: [medicationId], references: [id])
+
+  @@index([medicationId])
+}
+
+model MedicationReplacement {
+  id                      BigInt   @id @default(autoincrement())
+  medicationId            BigInt
+  replacementMedicationId BigInt
+  createdAt               DateTime @default(now())
+
+  originalMedication    Medication @relation("OriginalMedication", fields: [medicationId], references: [id])
+  replacementMedication Medication @relation("ReplacementMedication", fields: [replacementMedicationId], references: [id])
+
+  replacements Replacement[]
+
+  @@index([medicationId])
+  @@index([replacementMedicationId])
+}
+
+//////////////////////
+// INVENTORY
+//////////////////////
+
+model PharmacyInventory {
+  id           BigInt @id @default(autoincrement())
+  pharmacyId   String
+  medicationId BigInt
+
+  stock     Int
+  updatedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  pharmacy   Pharmacy   @relation(fields: [pharmacyId], references: [id])
+  medication Medication @relation(fields: [medicationId], references: [id])
+
+  @@index([pharmacyId])
+  @@index([medicationId])
+}
+
+model InventoryAdjustment {
+  id                  BigInt           @id @default(autoincrement())
+  pharmacyId          String
+  medicationId        BigInt
+  adjustmentType      AdjustmentType
+  quantity            Int
+  reason              AdjustmentReason
+  notes               String?
+  referenceOrderId    BigInt?
+  referencePurchaseId BigInt?
+  createdAt           DateTime         @default(now())
+
+  pharmacy          Pharmacy   @relation(fields: [pharmacyId], references: [id])
+  medication        Medication @relation(fields: [medicationId], references: [id])
+  referenceOrder    Order?     @relation(fields: [referenceOrderId], references: [id])
+  referencePurchase Purchase?  @relation(fields: [referencePurchaseId], references: [id])
+}
+
+//////////////////////
+// ORDERS & PURCHASES
+//////////////////////
+
+model Order {
+  id                BigInt        @id @default(autoincrement())
+  pharmacyId        String
+  supplierCompanyId String
+  totalPrice        Decimal
+  paymentStatus     PaymentStatus
+  createdAt         DateTime      @default(now())
+
+  pharmacy        Pharmacy          @relation(fields: [pharmacyId], references: [id])
+  supplierCompany MedicationCompany @relation(fields: [supplierCompanyId], references: [id])
+
+  items                OrderItem[]
+  payments             Payment[]
+  inventoryAdjustments InventoryAdjustment[]
+
+  @@index([pharmacyId])
+  @@index([supplierCompanyId])
+}
+
+model OrderItem {
+  id                 BigInt  @id @default(autoincrement())
+  orderId            BigInt
+  medicationId       BigInt
+  quantity           Int
+  unitPrice          Decimal
+  medicationDiscount Decimal
+  totalPrice         Decimal
+
+  order      Order      @relation(fields: [orderId], references: [id])
+  medication Medication @relation(fields: [medicationId], references: [id])
+
+  @@index([orderId])
+  @@index([medicationId])
+}
+
+model Purchase {
+  id            BigInt        @id @default(autoincrement())
+  pharmacyId    String
+  customerName  String
+  totalPrice    Decimal
+  paymentStatus PaymentStatus
+  createdAt     DateTime      @default(now())
+
+  pharmacy             Pharmacy              @relation(fields: [pharmacyId], references: [id])
+  items                PurchaseItem[]
+  payments             Payment[]
+  inventoryAdjustments InventoryAdjustment[]
+
+  @@index([pharmacyId])
+}
+
+model PurchaseItem {
+  id                 BigInt  @id @default(autoincrement())
+  purchaseId         BigInt
+  medicationId       BigInt
+  quantity           Int
+  unitPrice          Decimal
+  medicationDiscount Decimal
+  totalPrice         Decimal
+
+  purchase   Purchase   @relation(fields: [purchaseId], references: [id])
+  medication Medication @relation(fields: [medicationId], references: [id])
+
+  @@index([purchaseId])
+  @@index([medicationId])
+}
+
+//////////////////////
+// PAYMENTS
+//////////////////////
+
+model Payment {
+  id                BigInt   @id @default(autoincrement())
+  purchaseId        BigInt?
+  orderId           BigInt?
+  paymentAmount     Decimal
+  paymentMethod     String
+  paymentDate       DateTime
+  installmentNumber Int?
+  notes             String?
+
+  purchase Purchase? @relation(fields: [purchaseId], references: [id])
+  order    Order?    @relation(fields: [orderId], references: [id])
+
+  @@index([purchaseId])
+  @@index([orderId])
+}
+
+//////////////////////
+// DEMAND & REPLACEMENTS
+//////////////////////
+
+model DemandLog {
+  id           BigInt     @id @default(autoincrement())
+  pharmacyId   String
+  medicationId BigInt
+  demandType   DemandType
+  createdAt    DateTime   @default(now())
+
+  pharmacy   Pharmacy   @relation(fields: [pharmacyId], references: [id])
+  medication Medication @relation(fields: [medicationId], references: [id])
+
+  @@index([pharmacyId])
+  @@index([medicationId])
+}
+
+model Replacement {
+  id                      BigInt   @id @default(autoincrement())
+  pharmacyId              String
+  medicationReplacementId BigInt
+  customerName            String
+  isAccepted              Boolean
+  createdAt               DateTime @default(now())
+
+  pharmacy              Pharmacy              @relation(fields: [pharmacyId], references: [id])
+  medicationReplacement MedicationReplacement @relation(fields: [medicationReplacementId], references: [id])
+
+  @@index([pharmacyId])
+  @@index([medicationReplacementId])
+}
+
+//////////////////////
+// RESERVATIONS
+//////////////////////
+
+model Reservation {
+  id           BigInt            @id @default(autoincrement())
+  userId       String
+  status       ReservationStatus
+  deliveryDate DateTime
+  totalPrice   Decimal
+  createdAt    DateTime          @default(now())
+
+  user  EndUser           @relation(fields: [userId], references: [id])
+  items ReservationItem[]
+
+  @@index([userId])
+}
+
+model ReservationItem {
+  id            BigInt  @id @default(autoincrement())
+  reservationId BigInt
+  medicationId  BigInt
+  quantity      Int
+  unitPrice     Decimal
+  subtotal      Decimal
+
+  reservation Reservation @relation(fields: [reservationId], references: [id])
+  medication  Medication  @relation(fields: [medicationId], references: [id])
+
+  @@index([reservationId])
+  @@index([medicationId])
+}
+
+//////////////////////
+// ALERTS & REJECTIONS
+//////////////////////
+
+model Rejection {
+  id         BigInt   @id @default(autoincrement())
+  pharmacyId String?
+  companyId  String?
+  reason     String
+  createdAt  DateTime @default(now())
+
+  pharmacy Pharmacy?          @relation(fields: [pharmacyId], references: [id])
+  company  MedicationCompany? @relation(fields: [companyId], references: [id])
+
+  @@index([pharmacyId])
+  @@index([companyId])
+}
+
+model StockAlertSubscription {
+  id           BigInt    @id @default(autoincrement())
+  userId       String
+  medicationId BigInt
+  createdAt    DateTime  @default(now())
+  notifiedAt   DateTime?
+  isActive     Boolean   @default(true)
+
+  user       EndUser    @relation(fields: [userId], references: [id])
+  medication Medication @relation(fields: [medicationId], references: [id])
+
+  @@index([userId])
+  @@index([medicationId])
+}
