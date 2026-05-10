@@ -4,3 +4,6 @@ node_modules
 .env
 
 /generated/prisma
+
+seed-trial.js
+test.js

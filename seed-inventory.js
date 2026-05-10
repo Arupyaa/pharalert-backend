@@ -181,7 +181,7 @@ RUN SCRIPT
 */
 
 seedPharmacyInventory({
-    averageAmountPerMedication: 300,
+    averageAmountPerMedication: 800,
     createdAt: new Date("2026-03-01T08:00:00Z"),
 })
     .catch((e) => {

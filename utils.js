@@ -292,8 +292,29 @@ export function generateRealisticTimestamps({
 
             current += normalized[j];
 
+            const safeCurrent = Math.min(
+                current,
+                we - (Math.random() * minGapMs)
+            );
+
+            let finalTimestamp = current;
+
+            if (j === windowCount - 1) {
+
+                const minAllowed =
+                    current - normalized[j];
+
+                const maxAllowed =
+                    we;
+
+                finalTimestamp =
+                    minAllowed +
+                    Math.random() *
+                    (maxAllowed - minAllowed);
+            }
+
             allTimestamps.push(
-                dayjs(current).utc().toDate()
+                dayjs(finalTimestamp).utc().toDate()
             );
 
             current += minGapMs;
@@ -328,4 +349,45 @@ export function egyptDateToUtcRange(date, tz = "Africa/Cairo") {
         startDate: startLocal.toDate().toISOString(),
         endDate: endLocal.toDate().toISOString(),
     };
+}
+
+/**
+ * Generates daily UTC ranges between two dates (inclusive)
+ *
+ * Example:
+ * generateDailyRanges("2026-03-01", "2026-03-03")
+ */
+
+export function generateDailyRanges(
+    startDate,
+    endDate
+) {
+    const ranges = [];
+
+    let current =
+        dayjs.utc(startDate).startOf("day");
+
+    const end =
+        dayjs.utc(endDate).startOf("day");
+
+    while (
+        current.isBefore(end) ||
+        current.isSame(end, "day")
+    ) {
+        ranges.push({
+            startDate:
+                current
+                    .startOf("day")
+                    .toISOString(),
+
+            endDate:
+                current
+                    .endOf("day")
+                    .toISOString(),
+        });
+
+        current = current.add(1, "day");
+    }
+
+    return ranges;
 }
