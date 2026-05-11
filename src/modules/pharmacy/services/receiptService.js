@@ -141,3 +141,22 @@ export async function queryReceiptBymedicationIncluded(pharmacyId, medicationId,
         recordsCount: count
     }
 }
+
+export async function addReceiptRecord(body) {
+    const receipt = await prisma.purchase.create({
+        data: {
+            pharmacyId:body.pharmacyId,
+            customerName:body.customerName,
+            totalPrice:body.totalPrice,
+            paymentStatus:body.paymentStatus,
+
+            items:{
+                create: body.items
+            }
+        },
+        include:{
+            items:true,
+        }
+    })
+    return { data: receipt };
+}

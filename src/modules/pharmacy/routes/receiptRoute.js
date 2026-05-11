@@ -1,13 +1,15 @@
 import express from "express";
-import { getAllReceipts, getReceipt, getReceiptByMedication, getReceiptsInTable } from "../controllers/receiptController.js";
+import { addReceipt, getAllReceipts, getReceipt, getReceiptByMedication, getReceiptsInTable } from "../controllers/receiptController.js";
 
 const router = express.Router({
-    mergeParams:true
+    mergeParams: true
 });
 
-router.get("/",getAllReceipts);
+router.get("/", getAllReceipts);
 router.get("/table", getReceiptsInTable);
-router.get("/medication/:mid",getReceiptByMedication);
-router.get("/:rid",getReceipt);
+router.get("/medication/:mid", getReceiptByMedication);
+router.get("/:rid", getReceipt);
+
+router.post("/", addReceipt);
 
 export default router;

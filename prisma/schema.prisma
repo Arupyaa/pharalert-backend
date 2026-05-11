@@ -225,7 +225,7 @@ model Medication {
 }
 
 model MedicationBarcode {
-  id           BigInt      @id @default(autoincrement())
+  id           BigInt     @id @default(autoincrement())
   barcode      String     @unique
   medicationId BigInt
   medication   Medication @relation(fields: [medicationId], references: [id])
@@ -315,7 +315,7 @@ model OrderItem {
   medicationId       BigInt
   quantity           Int
   unitPrice          Decimal
-  medicationDiscount Decimal
+  medicationDiscount Decimal @default(0)
   totalPrice         Decimal
 
   order      Order      @relation(fields: [orderId], references: [id])
@@ -328,7 +328,7 @@ model OrderItem {
 model Purchase {
   id            BigInt        @id @default(autoincrement())
   pharmacyId    String
-  customerName  String
+  customerName  String        @default("customer")
   totalPrice    Decimal
   paymentStatus PaymentStatus
   createdAt     DateTime      @default(now())
@@ -347,7 +347,7 @@ model PurchaseItem {
   medicationId       BigInt
   quantity           Int
   unitPrice          Decimal
-  medicationDiscount Decimal
+  medicationDiscount Decimal @default(0)
   totalPrice         Decimal
 
   purchase   Purchase   @relation(fields: [purchaseId], references: [id])
