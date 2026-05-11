@@ -17,22 +17,52 @@ const connectionString = `${process.env.DATABASE_URL}`;
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
-export async function getReceipts(pharmacyId,page,limit) {
-    const res = await prisma.purchase.findMany({
-        where: { pharmacyId: pharmacyId },
-        include: {
-            items: true
-        },
-        orderBy: {createdAt:"asc"}
-    });
-    return res;
+export async function getReceipts(pharmacyId, order = "asc") {
+    const [receipts, count] = await prisma.$transaction([
+        prisma.purchase.findMany({
+            where: { pharmacyId: pharmacyId },
+            include: {
+                items: true
+            },
+            orderBy: { createdAt: order }
+        }),
+        prisma.purchase.count({
+            where: {
+                pharmacyId: pharmacyId
+            }
+        })
+    ]);
+
+    return {
+        data: receipts,
+        recordsCount: count
+    }
 }
 
-export async function getReceiptsCount(pharmacyId) {
-    const res = await prisma.purchase.count({
-        where: {
-            pharmacyId: pharmacyId
-        }
-    });
-    return res;
+export async function getReceiptsPaginated(pharmacyId, order = "asc", page, limit) {
+    const [receipts, count] = await prisma.$transaction([
+        prisma.purchase.findMany({
+            take: limit,
+            skip: ((page - 1) * limit),
+            where: { pharmacyId: pharmacyId },
+            include: {
+                items: true
+            },
+            orderBy: { createdAt: order }
+        }),
+        prisma.purchase.count({
+            where: {
+                pharmacyId: pharmacyId
+            }
+        })
+
+    ])
+    return {
+        data: receipts,
+        page: page,
+        limit: limit,
+        recordsCount: count
+    }
 }
+
+
