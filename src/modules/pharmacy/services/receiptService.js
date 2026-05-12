@@ -1,17 +1,16 @@
-import dotenv from "dotenv";
-dotenv.config();
-
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaNeon } from "@prisma/adapter-neon";
-import { PrismaClient } from "../../../../generated/prisma/client.js"
+// import { PrismaPg } from "@prisma/adapter-pg";
+// import { PrismaNeon } from "@prisma/adapter-neon";
+// import { PrismaClient } from "../../../../generated/prisma/client.js"
 
 
-const connectionString = `${process.env.DATABASE_URL}`;
-//local database adapter
-const adapter = new PrismaPg({ connectionString });
-//neon server adapter
-// const adapter = new PrismaNeon({connectionString});
-const prisma = new PrismaClient({ adapter });
+// const connectionString = `${process.env.DATABASE_URL}`;
+// //local database adapter
+// const adapter = new PrismaPg({ connectionString });
+// //neon server adapter
+// // const adapter = new PrismaNeon({connectionString});
+// const prisma = new PrismaClient({ adapter });
+
+import prisma from "../../../prisma.js";
 
 export async function queryReceipts(pharmacyId, order = "asc") {
     const [receipts, count] = await prisma.$transaction([
