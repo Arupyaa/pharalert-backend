@@ -1,5 +1,5 @@
 import { addReceiptRecord, queryReceiptById, queryReceiptBymedicationIncluded, queryReceipts, queryReceiptsPaginated } from "../services/receiptService.js";
-import { serializeBigInt } from "../../../utils/serializeBigINT.js";
+import { serializeBigInt } from "../../../utils/serializeBigInt.js";
 import { receiptSchema } from "../validators/receiptValidator.js";
 
 //no pagination
