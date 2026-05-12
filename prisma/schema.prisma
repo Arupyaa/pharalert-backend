@@ -70,12 +70,13 @@ enum ReservationStatus {
 //////////////////////
 
 model Admin {
-  id           String    @id @default(uuid())
-  userName     String
-  email        String    @unique
-  passwordHash String
-  createdAt    DateTime  @default(now())
-  deletedAt    DateTime?
+  id            String         @id @default(uuid())
+  userName      String
+  email         String         @unique
+  passwordHash  String
+  createdAt     DateTime       @default(now())
+  deletedAt     DateTime?
+  refreshTokens RefreshToken[]
 }
 
 model Region {
@@ -114,6 +115,7 @@ model Pharmacy {
   subscriptions        Subscription[]
   rejections           Rejection[]
   inventoryAdjustments InventoryAdjustment[]
+  refreshTokens        RefreshToken[]
 
   @@index([regionId])
   @@index([name])
@@ -125,7 +127,7 @@ model MedicationCompany {
   companyName   String
   email         String        @unique
   passwordHash  String
-  phoneNumber   String
+  phoneNumber   String?
   accountStatus AccountStatus
   createdAt     DateTime      @default(now())
 
@@ -133,6 +135,7 @@ model MedicationCompany {
   orders        Order[]
   subscriptions Subscription[]
   rejections    Rejection[]
+  refreshTokens RefreshToken[]
 
   @@index([companyName])
 }
@@ -142,7 +145,7 @@ model EndUser {
   userName     String          @unique
   email        String          @unique
   passwordHash String
-  phoneNumber  String
+  phoneNumber  String?
   accountType  UserAccountType
   address      String?
   latitude     Float?
@@ -153,6 +156,7 @@ model EndUser {
   reservations  Reservation[]
   subscriptions Subscription[]
   alerts        StockAlertSubscription[]
+  refreshTokens RefreshToken[]
 
   @@index([accountType])
   @@index([phoneNumber])
@@ -475,4 +479,26 @@ model StockAlertSubscription {
 
   @@index([userId])
   @@index([medicationId])
+}
+
+model RefreshToken {
+  id    String @id @default(uuid())
+  token String @unique
+
+  adminId    String?
+  pharmacyId String?
+  companyId  String?
+  userId     String?
+
+  createdAt DateTime @default(now())
+
+  admin    Admin?             @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  pharmacy Pharmacy?          @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  company  MedicationCompany? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user     EndUser?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([pharmacyId])
+  @@index([companyId])
+  @@index([userId])
 }
