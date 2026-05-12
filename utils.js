@@ -1,6 +1,8 @@
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
+import fs from "fs"
+import path from "path"
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -390,4 +392,12 @@ export function generateDailyRanges(
     }
 
     return ranges;
+}
+
+export async function saveJson(jsonData,filename){
+
+    let filepath = path.join(".","testing","json",filename)
+    fs.writeFile(filepath,jsonData,'utf-8',(err) => {
+    if (err) console.error(err);
+});
 }
