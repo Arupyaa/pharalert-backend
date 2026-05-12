@@ -1,5 +1,10 @@
 import { createEndUser } from "../services/registerService.js";
 import { endUserSchema } from "../validators/registerSchemas.js";
+import { loginSchema } from "../validators/loginSchema.js";
+import { loginService } from "../services/loginService.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+
 
 export const registerUser = async (req, res) => {
     const { role } = req.body;
@@ -35,3 +40,29 @@ export const registerUser = async (req, res) => {
             return res.status(400).json({ message: "invalid role" });
     }
 }
+
+
+export const loginUser = async (req, res) => {
+    const result = loginSchema.safeParse(req.body);
+
+    if (!result.success) {
+        return res.status(400).json({
+            message: "Validation error",
+            errors: result.error.flatten(),
+        });
+    }
+
+    try {
+        const data = await loginService(result.data);
+
+        return res.status(200).json({
+            message: "Login successful",
+            ...data,
+        });
+
+    } catch (err) {
+        return res.status(err.status || 500).json({
+            message: err.message,
+        });
+    }
+};
