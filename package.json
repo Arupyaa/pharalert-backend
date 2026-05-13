@@ -16,7 +16,7 @@
   "main": "./src/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "seed": "node seed-fixed.js && node seed-sub-repMed.js && node seed-inventory.js && node seed-purchase-cycle.js",
+    "seed": "node seed-fixed.js && node seed-sub-repMed.js && node seed-inventory.js && node seed-purchase-cycle.js && node seed-reserv.js",
     "start": "node src/server.js",
     "dev": "nodemon /src/server.js",
     "postinstall": "prisma generate"

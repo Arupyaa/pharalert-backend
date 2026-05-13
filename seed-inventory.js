@@ -133,7 +133,7 @@ async function seedPharmacyInventory({
                 data: {
                     pharmacyId: pharmacy.id,
                     medicationId: medication.id,
-                    stock:quantity,
+                    stock: quantity,
                     createdAt,
                 },
             });
@@ -180,14 +180,23 @@ RUN SCRIPT
 ==================================================
 */
 
-seedPharmacyInventory({
-    averageAmountPerMedication: 800,
-    createdAt: new Date("2026-03-01T08:00:00Z"),
-})
-    .catch((e) => {
-        console.error(e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
+// seedPharmacyInventory({
+//     averageAmountPerMedication: 800,
+//     createdAt: new Date("2026-03-01T08:00:00Z"),
+// })
+//     .catch((e) => {
+//         console.error(e);
+//         process.exit(1);
+//     })
+//     .finally(async () => {
+//         await prisma.$disconnect();
+//     });
+
+async function main() {
+    seedPharmacyInventory({
+        averageAmountPerMedication: 800,
+        createdAt: new Date("2026-03-01T08:00:00Z"),
     });
+};
+
+export default main;
