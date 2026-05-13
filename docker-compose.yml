@@ -1,0 +1,17 @@
+
+services:
+  db:
+    image: postgres:16
+    container_name: pharmacy-db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: 123
+      POSTGRES_DB: pharalert
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
