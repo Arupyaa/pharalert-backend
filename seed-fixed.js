@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/prisma/client.js";
+import bcrypt from "bcrypt";
 
 const connectionString = `${process.env.DATABASE_URL}`;
 
@@ -24,9 +25,9 @@ const regions = [
 ];
 
 const admins = [
-    { userName: "arupyaa", email: "arupyaa@pharma.com", passwordHash: "pass123" },
-    { userName: "omgran", email: "omgran@pharma.com", passwordHash: "pass123" },
-    { userName: "Ezzy", email: "Ezzy@pharma.com", passwordHash: "pass123" },
+    { userName: "arupyaa", email: "arupyaa@pharma.com" },
+    { userName: "omgran", email: "omgran@pharma.com" },
+    { userName: "Ezzy", email: "Ezzy@pharma.com" },
 ];
 
 
@@ -65,12 +66,12 @@ const paidUsernames = [
 
 
 const companies = [
-    { companyName: "Pharma Egypt", email: "contact@pharmaegypt.com", phoneNumber: "+201001112223", passwordHash: "pass123", accountStatus: "active" },
-    { companyName: "Nile Pharma", email: "info@nilepharma.com", phoneNumber: "+201002223334", passwordHash: "pass123", accountStatus: "active" },
-    { companyName: "Cairo Drug Industries", email: "sales@cairodrug.com", phoneNumber: "+201003334445", passwordHash: "pass123", accountStatus: "active" },
-    { companyName: "Delta Med", email: "support@deltamed.com", phoneNumber: "+201004445556", passwordHash: "pass123", accountStatus: "active" },
-    { companyName: "Arab Medical Co", email: "contact@arabmed.com", phoneNumber: "+201005556667", passwordHash: "pass123", accountStatus: "active" },
-    { companyName: "Medline Egypt", email: "info@medlineegypt.com", phoneNumber: "+201006667778", passwordHash: "pass123", accountStatus: "active" },
+    { companyName: "Pharma Egypt", email: "contact@pharmaegypt.com", phoneNumber: "+201001112223", accountStatus: "active" },
+    { companyName: "Nile Pharma", email: "info@nilepharma.com", phoneNumber: "+201002223334", accountStatus: "active" },
+    { companyName: "Cairo Drug Industries", email: "sales@cairodrug.com", phoneNumber: "+201003334445", accountStatus: "active" },
+    { companyName: "Delta Med", email: "support@deltamed.com", phoneNumber: "+201004445556", accountStatus: "active" },
+    { companyName: "Arab Medical Co", email: "contact@arabmed.com", phoneNumber: "+201005556667", accountStatus: "active" },
+    { companyName: "Medline Egypt", email: "info@medlineegypt.com", phoneNumber: "+201006667778", accountStatus: "active" },
 ];
 
 const categories = [
@@ -204,9 +205,15 @@ async function generateMedicationBarcode() {
 
 async function main() {
     console.log("Seeding started...");
+    const hashedPassword = await bcrypt.hash("pass123", 10);
 
     /* ADMIN */
-    await prisma.admin.createMany({ data: admins });
+    await prisma.admin.createMany({
+        data: admins.map(a => ({
+            ...a,
+            passwordHash: hashedPassword
+        }))
+    });
 
     /* REGIONS */
     const regionRecords = await Promise.all(
@@ -217,7 +224,14 @@ async function main() {
 
     /* COMPANIES */
     const companyRecords = await Promise.all(
-        companies.map((c) => prisma.medicationCompany.create({ data: c }))
+        companies.map(c =>
+            prisma.medicationCompany.create({
+                data: {
+                    ...c,
+                    passwordHash: hashedPassword
+                }
+            })
+        )
     );
 
     /* CATEGORIES */
@@ -269,7 +283,7 @@ async function main() {
                     regionId: region.id,
                     name: pharmacyNames[i],
                     email: `${formatPharmacyName(pharmacyNames[i])}@gmail.com`,
-                    passwordHash: "pass123",
+                    passwordHash: hashedPassword,
                     address: `${region.name} Center`,
                     latitude: coords.lat + Math.random() * 0.01,
                     longitude: coords.lng + Math.random() * 0.01,
@@ -284,7 +298,7 @@ async function main() {
     const freeUsers = Array.from({ length: 100 }, (_, i) => ({
         userName: freeUsernames[i],
         email: `${freeUsernames[i]}@gmail.com`,
-        passwordHash: "pass123",
+        passwordHash: hashedPassword,
         phoneNumber: `+20${1000000000 + i}`,
         accountType: "free",
     }));
@@ -299,7 +313,7 @@ async function main() {
         return {
             userName: paidUsernames[i],
             email: `${paidUsernames[i]}@gmail.com`,
-            passwordHash: "pass123",
+            passwordHash: hashedPassword,
             phoneNumber: `+20${1010000000 + i}`,
             accountType: "paid",
             address: `${city} District`,
@@ -322,11 +336,13 @@ function formatPharmacyName(name) {
         .join("");                      // join without spaces
 }
 
-main()
-    .catch((e) => {
-        console.error(e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
+// main()
+//     .catch((e) => {
+//         console.error(e);
+//         process.exit(1);
+//     })
+//     .finally(async () => {
+//         await prisma.$disconnect();
+//     });
+
+export default main;

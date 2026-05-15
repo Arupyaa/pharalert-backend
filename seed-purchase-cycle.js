@@ -24,14 +24,16 @@ async function main() {
     });
 }
 
-main()
-    .catch((e) => {
-        console.error(e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
+// main()
+//     .catch((e) => {
+//         console.error(e);
+//         process.exit(1);
+//     })
+//     .finally(async () => {
+//         await prisma.$disconnect();
+//     });
+
+export default main;
 
 /* =========================================================
 MULTI DAY SIMULATION
@@ -143,8 +145,36 @@ async function simulatePharmacyDay({
         "Sherif Samir",
     ];
 
+    // =====================================================
+    // ✅ INVENTORY CACHE (CRITICAL FIX)
+    // =====================================================
+    const inventoryCache = new Map();
+
+    const getStock = async (medicationId) => {
+        const key = `${pharmacyId}-${medicationId}`;
+
+        if (inventoryCache.has(key)) {
+            return inventoryCache.get(key);
+        }
+
+        const inventoryRecord = await prisma.pharmacyInventory.findFirst({
+            where: { pharmacyId, medicationId },
+        });
+
+        const stock = inventoryRecord?.stock ?? 0;
+        inventoryCache.set(key, stock);
+
+        return stock;
+    };
+
+    const updateStock = (medicationId, newStock) => {
+        const key = `${pharmacyId}-${medicationId}`;
+        inventoryCache.set(key, newStock);
+    };
+
     for (const timestamp of timestamps) {
         const inquiryCount = Math.floor(Math.random() * 4) + 1;
+
         const requestedMedications = [];
 
         for (let i = 0; i < inquiryCount; i++) {
@@ -171,20 +201,22 @@ async function simulatePharmacyDay({
         for (const medicationId of requestedMedications) {
             const quantity = Math.floor(Math.random() * 4) + 1;
 
-            const inventoryRecord =
-                await prisma.pharmacyInventory.findFirst({
-                    where: { pharmacyId, medicationId },
-                });
-
-            const currentStock = inventoryRecord?.stock ?? 0;
+            // =====================================================
+            // ✅ SAFE STOCK CHECK (NO STALE DB READS)
+            // =====================================================
+            const currentStock = await getStock(medicationId);
 
             let demandType = "NO_ACTION";
 
             if (currentStock > 0) {
+                const usedQty = Math.min(quantity, currentStock);
+
                 purchasedItems.push({
                     medicationId,
-                    quantity: Math.min(quantity, currentStock),
+                    quantity: usedQty,
                 });
+
+                updateStock(medicationId, currentStock - usedQty);
 
                 demandType = "PURCHASED";
             } else {
@@ -197,17 +229,9 @@ async function simulatePharmacyDay({
                         });
 
                     if (replacement) {
-                        const replacementInventory =
-                            await prisma.pharmacyInventory.findFirst({
-                                where: {
-                                    pharmacyId,
-                                    medicationId:
-                                        replacement.replacementMedicationId,
-                                },
-                            });
-
-                        const replacementStock =
-                            replacementInventory?.stock ?? 0;
+                        const replacementStock = await getStock(
+                            replacement.replacementMedicationId
+                        );
 
                         if (replacementStock > 0) {
                             const refusalRate =
@@ -227,14 +251,21 @@ async function simulatePharmacyDay({
                             });
 
                             if (isAccepted) {
+                                const usedQty = Math.min(
+                                    quantity,
+                                    replacementStock
+                                );
+
                                 purchasedItems.push({
                                     medicationId:
                                         replacement.replacementMedicationId,
-                                    quantity: Math.min(
-                                        quantity,
-                                        replacementStock
-                                    ),
+                                    quantity: usedQty,
                                 });
+
+                                updateStock(
+                                    replacement.replacementMedicationId,
+                                    replacementStock - usedQty
+                                );
 
                                 demandType = "REPLACEMENT_ACCEPTED";
                             } else {
@@ -259,7 +290,6 @@ async function simulatePharmacyDay({
             (i) => i.quantity > 0
         );
 
-        // ✅ FIXED SAFETY: no empty purchase records anymore
         if (validPurchasedItems.length === 0) continue;
 
         const purchase = await prisma.purchase.create({
@@ -286,9 +316,9 @@ async function simulatePharmacyDay({
             let discount = 0;
 
             if (Math.random() < 0.1) {
-                const percent = Math.random() * (0.15 - 0.05) + 0.05;
-                discount = basePrice * percent;
-                discount = discount.toFixed(2);
+                const percent =
+                    Math.random() * (0.15 - 0.05) + 0.05;
+                discount = +(basePrice * percent).toFixed(2);
             }
 
             const finalUnitPrice = basePrice - discount;
@@ -307,22 +337,18 @@ async function simulatePharmacyDay({
 
             totalPrice += finalTotalPrice;
 
-            const inventory = await prisma.pharmacyInventory.findFirst({
-                where: { pharmacyId, medicationId: item.medicationId },
-            });
-
-            if (inventory) {
-                await prisma.pharmacyInventory.update({
-                    where: { id: inventory.id },
-                    data: {
-                        stock: Math.max(
-                            inventory.stock - item.quantity,
-                            0
-                        ),
-                        updatedAt: timestamp,
+            await prisma.pharmacyInventory.updateMany({
+                where: {
+                    pharmacyId,
+                    medicationId: item.medicationId,
+                },
+                data: {
+                    stock: {
+                        decrement: item.quantity,
                     },
-                });
-            }
+                    updatedAt: timestamp,
+                },
+            });
 
             await prisma.inventoryAdjustment.create({
                 data: {
@@ -335,17 +361,6 @@ async function simulatePharmacyDay({
                     createdAt: timestamp,
                 },
             });
-        }
-
-        const count = await prisma.purchaseItem.count({
-            where: { purchaseId: purchase.id },
-        });
-
-        if (count === 0) {
-            await prisma.purchase.delete({
-                where: { id: purchase.id },
-            });
-            continue;
         }
 
         await prisma.purchase.update({

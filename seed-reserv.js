@@ -18,12 +18,12 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
 
-    const seedDate = "2026-04-27T00:00:00Z";
+    const seedDate = "2026-04-05T00:00:00Z";
 
-    // await seedReservations({
-    //     prisma,
-    //     date: seedDate,
-    // });
+    await seedReservations({
+        prisma,
+        date: seedDate,
+    });
 
     await seedStockAlertSubscriptions({
         prisma,
@@ -31,14 +31,16 @@ async function main() {
     });
 }
 
-main()
-    .catch((e) => {
-        console.error(e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
+// main()
+//     .catch((e) => {
+//         console.error(e);
+//         process.exit(1);
+//     })
+//     .finally(async () => {
+//         await prisma.$disconnect();
+//     });
+
+export default main;
 
 // =====================================
 // RANDOM HELPERS
