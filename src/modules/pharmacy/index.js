@@ -1,8 +1,8 @@
 import express from "express";
-import receiptsRoutes from "./routes/receiptRoute.js";
+import purchasesRoutes from "./routes/receiptRoute.js";
 
 const router = express.Router();
 
-router.use("/:pid/receipts",receiptsRoutes);
+router.use("/purchases",purchasesRoutes);
 
 export default router;
