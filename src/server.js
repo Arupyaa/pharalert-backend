@@ -4,16 +4,32 @@ import express from "express";
 import pharmacyRoutes from "./modules/pharmacy/index.js"
 import cors from "cors";
 import authRoutes from "./modules/auth/index.js"
+import errorMiddleware from "./middlewares/errorMiddleware.js";
+import AppError from "./utils/AppError.js";
 
 const app = express();
 app.use(cors());
 
 app.use(express.json());
 
-app.use("/auth",authRoutes);
-app.use("/pharmacy",pharmacyRoutes);
+
+//routes
+app.use("/auth", authRoutes);
+app.use("/pharmacy", pharmacyRoutes);
+
+//error handling middleware
+app.use((req, res, next) => {
+    next(
+        new AppError(
+            `Route ${req.originalUrl} not found`,
+            404
+        )
+    );
+});
+
+app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT,()=>{
+app.listen(PORT, () => {
     console.log(`server running on port ${PORT}`);
 });

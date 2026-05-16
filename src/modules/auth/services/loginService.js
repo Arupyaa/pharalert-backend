@@ -1,72 +1,199 @@
-import prisma from "../../../prisma.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import prisma from "../../../prisma.js"
+import AppError from "../../../utils/AppError.js";
+import generateAccessToken from "../../../utils/generateAccessToken.js";
+import generateRefreshToken from "../../../utils/generateRefreshToken.js";
 
-export const loginService = async ({ role, email, password }) => {
-    let account;
-    let idField;
+export const loginService =
+    async ({
+        role,
+        email,
+        password,
+    }) => {
+        let account;
 
-    // 1. fetch user by role
-    switch (role) {
-        case "admin":
-            account = await prisma.admin.findUnique({ where: { email } });
-            idField = "adminId";
-            break;
+        let idField;
 
-        case "pharmacy":
-            account = await prisma.pharmacy.findUnique({ where: { email } });
-            idField = "pharmacyId";
-            break;
+        let accountType;
 
-        case "company":
-            account = await prisma.medicationCompany.findUnique({ where: { email } });
-            idField = "companyId";
-            break;
+        switch (role) {
+            case "admin":
+                account =
+                    await prisma.admin.findUnique(
+                        {
+                            where: {
+                                email,
+                            },
+                        }
+                    );
 
-        case "user":
-            account = await prisma.endUser.findUnique({ where: { email } });
-            idField = "userId";
-            break;
+                idField = "adminId";
 
-        default:
-            throw { status: 400, message: "Invalid role" };
-    }
+                accountType = "ADMIN";
 
-    // 2. validate existence
-    if (!account) {
-        throw { status: 404, message: "User not found" };
-    }
+                break;
 
-    // 3. password check (bcrypt belongs HERE)
-    const isValid = await bcrypt.compare(password, account.passwordHash);
+            case "pharmacy":
+                account =
+                    await prisma.pharmacy.findUnique(
+                        {
+                            where: {
+                                email,
+                            },
+                        }
+                    );
 
-    if (!isValid) {
-        throw { status: 401, message: "Invalid credentials" };
-    }
+                idField =
+                    "pharmacyId";
 
-    // 4. generate tokens
-    const accessToken = jwt.sign(
-        { id: account.id, role },
-        process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "1m" }
-    );
+                accountType =
+                    "PHARMACY";
 
-    const refreshToken = jwt.sign(
-        { id: account.id, role },
-        process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: "14d" }
-    );
+                break;
 
-    // 5. store refresh token
-    await prisma.refreshToken.create({
-        data: {
-            token: refreshToken,
-            [idField]: account.id,
-        },
-    });
+            case "company":
+                account =
+                    await prisma.medicationCompany.findUnique(
+                        {
+                            where: {
+                                email,
+                            },
+                        }
+                    );
 
-    return {
-        accessToken,
-        refreshToken,
+                idField =
+                    "companyId";
+
+                accountType =
+                    "COMPANY";
+
+                break;
+
+            case "user":
+                account =
+                    await prisma.endUser.findUnique(
+                        {
+                            where: {
+                                email,
+                            },
+                        }
+                    );
+
+                idField = "userId";
+
+                break;
+
+            default:
+                throw new AppError(
+                    "Invalid role",
+                    400
+                );
+        }
+
+        if (!account) {
+            throw new AppError(
+                "Invalid credentials",
+                401
+            );
+        }
+
+        const isValid =
+            await bcrypt.compare(
+                password,
+                account.passwordHash
+            );
+
+        if (!isValid) {
+            throw new AppError(
+                "Invalid credentials",
+                401
+            );
+        }
+
+        /*
+          EndUser role mapping
+        */
+
+        if (role === "user") {
+            accountType =
+                account.accountType ===
+                    "paid"
+                    ? "PAID_USER"
+                    : "FREE_USER";
+        }
+
+        /*
+          Optional account status checks
+        */
+
+        if (
+            account.accountStatus ===
+            "pending"
+        ) {
+            throw new AppError(
+                "Account pending approval",
+                403
+            );
+        }
+
+        if (
+            account.accountStatus ===
+            "rejected"
+        ) {
+            throw new AppError(
+                "Account rejected",
+                403
+            );
+        }
+
+        if (
+            account.accountStatus ===
+            "inactive"
+        ) {
+            throw new AppError(
+                "Account inactive",
+                403
+            );
+        }
+
+        /*
+          Unified JWT payload
+        */
+
+        const payload = {
+            id: account.id,
+            accountType,
+        };
+
+        const accessToken =
+            generateAccessToken(
+                payload
+            );
+
+        const refreshToken =
+            generateRefreshToken(
+                payload
+            );
+
+        /*
+          Store refresh token
+        */
+
+        await prisma.refreshToken.create(
+            {
+                data: {
+                    token:
+                        refreshToken,
+
+                    [idField]:
+                        account.id,
+                },
+            }
+        );
+
+        return {
+            accessToken,
+            refreshToken,
+            accountType,
+        };
     };
-};

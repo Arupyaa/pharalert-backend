@@ -1,87 +1,198 @@
-import { createEndUser } from "../services/registerService.js";
-import { endUserSchema } from "../validators/registerSchemas.js";
 import { loginSchema } from "../validators/loginSchema.js";
 import { loginService } from "../services/loginService.js";
 import { logoutService } from "../services/logoutService.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { serializeBigInt } from "../../../utils/serializeBigInt.js";
+import catchAsync from "../../../utils/catchAsync.js";
+import AppError from "../../../utils/AppError.js";
+import {
+    registerEndUserSchema,
+    registerPharmacySchema,
+    registerCompanySchema,
+} from "../validators/registerSchemas.js";
 
+import {
+    createEndUser,
+    createPharmacy,
+    createCompany,
+} from "../services/registerService.js";
+import { refreshService } from "../services/refreshService.js";
 
-export const registerUser = async (req, res) => {
-    const { role } = req.body;
+//registration controllers
 
-    switch (role) {
-        case "pharmacy":
-            return res.status(200).json({ message: "pharmacy registered" });
+export const registerUser =
+    catchAsync(async (req, res) => {
+        const result =
+            registerEndUserSchema.safeParse(
+                req.body
+            );
 
-        case "company":
-            return res.status(200).json({ message: "company registered" });
+        if (!result.success) {
+            throw new AppError(
+                "Validation failed",
+                400,
+                result.error.flatten()
+            );
+        }
 
-        case "user":
-            {
-                const result = endUserSchema.safeParse(req.body);
+        const user =
+            await createEndUser(
+                result.data
+            );
 
-                if (!result.success) {
-                    return res.status(400).json({
-                        message: "Validation failed",
-                        errors: result.error.flatten(),
-                    });
-                }
+        const {
+            passwordHash,
+            ...safeUser
+        } = user;
 
-                const user = await createEndUser(result.data);
-                const { passwordHash, ...safeUser } = user;
-
-                return res.status(201).json({
-                    message: "user registered",
-                    data: safeUser,
-                });
-            }
-
-        default:
-            return res.status(400).json({ message: "invalid role" });
-    }
-}
-
-
-export const loginUser = async (req, res) => {
-    const result = loginSchema.safeParse(req.body);
-
-    if (!result.success) {
-        return res.status(400).json({
-            message: "Validation error",
-            errors: result.error.flatten(),
+        res.status(201).json({
+            status: "success",
+            message:
+                "User registered successfully",
+            data: serializeBigInt(safeUser),
         });
-    }
+    });
 
-    try {
-        const data = await loginService(result.data);
+export const registerPharmacy =
+    catchAsync(async (req, res) => {
+        const result =
+            registerPharmacySchema.safeParse(
+                req.body
+            );
 
-        return res.status(200).json({
-            message: "Login successful",
+        if (!result.success) {
+            throw new AppError(
+                "Validation failed",
+                400,
+                result.error.flatten()
+            );
+        }
+
+        const pharmacy =
+            await createPharmacy(
+                result.data
+            );
+
+        const {
+            passwordHash,
+            ...safePharmacy
+        } = pharmacy;
+
+        res.status(201).json({
+            status: "success",
+            message:
+                "Pharmacy registration submitted successfully",
+            data: serializeBigInt(safePharmacy),
+        });
+    });
+
+export const registerCompany =
+    catchAsync(async (req, res) => {
+        const result =
+            registerCompanySchema.safeParse(
+                req.body
+            );
+
+        if (!result.success) {
+            throw new AppError(
+                "Validation failed",
+                400,
+                result.error.flatten()
+            );
+        }
+
+        const company =
+            await createCompany(
+                result.data
+            );
+
+        const {
+            passwordHash,
+            ...safeCompany
+        } = company;
+
+        res.status(201).json({
+            status: "success",
+            message:
+                "Company registration submitted successfully",
+            data: serializeBigInt(safeCompany),
+        });
+    });
+
+
+//login controller
+
+
+export const loginUser =
+    catchAsync(async (
+        req,
+        res
+    ) => {
+        const result =
+            loginSchema.safeParse(
+                req.body
+            );
+
+        if (!result.success) {
+            throw new AppError(
+                "Validation failed",
+                400,
+                result.error.flatten()
+            );
+        }
+
+        const data =
+            await loginService(
+                result.data
+            );
+
+        res.status(200).json({
+            status: "success",
+
+            message:
+                "Login successful",
+
             ...data,
         });
+    });
 
-    } catch (err) {
-        return res.status(err.status || 500).json({
-            message: err.message,
-        });
+//logout controller
+
+export const logoutUser = catchAsync(async (req, res) => {
+    const refreshToken =
+        req.body.refreshToken ||
+        req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+        throw new AppError(
+            "Refresh token is required",
+            400
+        );
     }
-};
+
+    await logoutService(refreshToken);
+
+    res.status(200).json({
+        status: "success",
+        message: "Logged out successfully",
+    });
+});
 
 
-export const logoutUser = async (req, res) => {
-    try {
-        const refreshToken =
-            req.body.refreshToken || req.cookies?.refreshToken;
+// refresh controller
 
-        await logoutService(refreshToken);
+export const refreshToken = catchAsync(async (req, res) => {
+    const token = req.body.refreshToken || req.cookies?.refreshToken;
 
-        return res.status(200).json({
-            message: "Logged out successfully",
-        });
-    } catch (err) {
-        return res.status(err.status || 500).json({
-            message: err.message,
-        });
+    if (!token) {
+        throw new AppError("Refresh token is required", 400);
     }
-};
+
+    const data = await refreshService(token);
+
+    res.status(200).json({
+        status: "success",
+        ...data
+    });
+});
