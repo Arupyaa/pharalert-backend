@@ -1,5 +1,6 @@
 import prisma from "../../../prisma.js";
 import AppError from "../../../utils/AppError.js";
+import { serializeBigInt } from "../../../utils/serializeBigInt.js";
 
 //service functions for get request
 export async function getPurchasesService(pharmacyId, filters) {
@@ -83,4 +84,117 @@ function buildReceipt(purchase) {
         total: purchase.totalPrice,
         items: purchase.items,
     };
+}
+
+
+//service functions for the post request
+
+export async function createPurchaseService(pharmacyId, data) {
+    const { customerName, paymentStatus = "fully_paid", totalPrice, items } = data;
+
+    // sanity check inventory first
+    const inventoryRecords = serializeBigInt(await prisma.pharmacyInventory.findMany({
+        where: {
+            pharmacyId,
+            medicationId: {
+                in: items.map(item => item.medicationId),
+            },
+        },
+    }));
+    console.log(inventoryRecords);
+    for (const item of items) {
+        const inventory = inventoryRecords.find(
+            inv => inv.medicationId == item.medicationId
+        );
+
+        if (!inventory) {
+            throw new AppError(
+                `Medication ${item.medicationId} not found in inventory`,
+                400
+            );
+        }
+
+        if (inventory.stock < item.quantity) {
+            throw new AppError(
+                `Insufficient stock for medication ${item.medicationId}`,
+                400
+            );
+        }
+    }
+
+    const purchase = await prisma.$transaction(async tx => {
+        // demand logs
+        await tx.demandLog.createMany({
+            data: items.map(item => ({
+                pharmacyId,
+                medicationId: item.medicationId,
+                demandType: "PURCHASED",
+            })),
+        });
+
+        // inventory updates
+        for (const item of items) {
+            await tx.pharmacyInventory.updateMany({
+                where: {
+                    pharmacyId,
+                    medicationId: item.medicationId,
+                },
+                data: {
+                    stock: {
+                        decrement: item.quantity,
+                    },
+                },
+            });
+        }
+
+        // purchase creation
+        const createdPurchase = await tx.purchase.create({
+            data: {
+                pharmacyId,
+                customerName,
+                paymentStatus,
+                totalPrice,
+
+                items: {
+                    create: items.map(item => ({
+                        medicationId: item.medicationId,
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice,
+                        medicationDiscount: item.medicationDiscount,
+                        totalPrice: item.totalPrice,
+                    })),
+                },
+            },
+
+            include: {
+                items: true,
+            },
+        });
+
+        // adjustment logs
+        await tx.inventoryAdjustment.createMany({
+            data: items.map(item => ({
+                pharmacyId,
+                medicationId: item.medicationId,
+                adjustmentType: "OUT",
+                quantity: item.quantity,
+                reason: "PURCHASE",
+                referencePurchaseId: createdPurchase.id,
+            })),
+        });
+
+        //payment creation
+        await tx.payment.create({
+            data: {
+                purchaseId: createdPurchase.id,
+                paymentAmount: totalPrice,
+                paymentMethod: "cash",
+                paymentDate: new Date(),
+            },
+        });
+
+        return createdPurchase;
+    });
+
+    return purchase;
 }
