@@ -17,7 +17,7 @@ import {
     createPharmacy,
     createCompany,
 } from "../services/registerService.js";
-
+import { refreshService } from "../services/refreshService.js";
 
 //registration controllers
 
@@ -176,5 +176,23 @@ export const logoutUser = catchAsync(async (req, res) => {
     res.status(200).json({
         status: "success",
         message: "Logged out successfully",
+    });
+});
+
+
+// refresh controller
+
+export const refreshToken = catchAsync(async (req, res) => {
+    const token = req.body.refreshToken || req.cookies?.refreshToken;
+
+    if (!token) {
+        throw new AppError("Refresh token is required", 400);
+    }
+
+    const data = await refreshService(token);
+
+    res.status(200).json({
+        status: "success",
+        ...data
     });
 });
