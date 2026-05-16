@@ -30,10 +30,9 @@ export const registerUser =
 
         if (!result.success) {
             throw new AppError(
-                JSON.stringify(
-                    result.error.flatten()
-                ),
-                400
+                "Validation failed",
+                400,
+                result.error.flatten()
             );
         }
 
@@ -64,10 +63,9 @@ export const registerPharmacy =
 
         if (!result.success) {
             throw new AppError(
-                JSON.stringify(
-                    result.error.flatten()
-                ),
-                400
+                "Validation failed",
+                400,
+                result.error.flatten()
             );
         }
 
@@ -98,10 +96,9 @@ export const registerCompany =
 
         if (!result.success) {
             throw new AppError(
-                JSON.stringify(
-                    result.error.flatten()
-                ),
-                400
+                "Validation failed",
+                400,
+                result.error.flatten()
             );
         }
 
@@ -124,48 +121,60 @@ export const registerCompany =
     });
 
 
-//login and logout controllers
+//login controller
 
 
-export const loginUser = async (req, res) => {
-    const result = loginSchema.safeParse(req.body);
+export const loginUser =
+    catchAsync(async (
+        req,
+        res
+    ) => {
+        const result =
+            loginSchema.safeParse(
+                req.body
+            );
 
-    if (!result.success) {
-        return res.status(400).json({
-            message: "Validation error",
-            errors: result.error.flatten(),
-        });
-    }
+        if (!result.success) {
+            throw new AppError(
+                "Validation failed",
+                400,
+                result.error.flatten()
+            );
+        }
 
-    try {
-        const data = await loginService(result.data);
+        const data =
+            await loginService(
+                result.data
+            );
 
-        return res.status(200).json({
-            message: "Login successful",
+        res.status(200).json({
+            status: "success",
+
+            message:
+                "Login successful",
+
             ...data,
         });
+    });
 
-    } catch (err) {
-        return res.status(err.status || 500).json({
-            message: err.message,
-        });
+//logout controller
+
+export const logoutUser = catchAsync(async (req, res) => {
+    const refreshToken =
+        req.body.refreshToken ||
+        req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+        throw new AppError(
+            "Refresh token is required",
+            400
+        );
     }
-};
 
+    await logoutService(refreshToken);
 
-export const logoutUser = async (req, res) => {
-    try {
-        const refreshToken =
-            req.body.refreshToken || req.cookies?.refreshToken;
-
-        await logoutService(refreshToken);
-
-        return res.status(200).json({
-            message: "Logged out successfully",
-        });
-    } catch (err) {
-        return res.status(err.status || 500).json({
-            message: err.message,
-        });
-    }
-};
+    res.status(200).json({
+        status: "success",
+        message: "Logged out successfully",
+    });
+});
