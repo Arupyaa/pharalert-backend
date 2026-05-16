@@ -66,12 +66,12 @@ const paidUsernames = [
 
 
 const companies = [
-    { companyName: "Pharma Egypt", email: "contact@pharmaegypt.com", phoneNumber: "+201001112223", accountStatus: "active" },
-    { companyName: "Nile Pharma", email: "info@nilepharma.com", phoneNumber: "+201002223334", accountStatus: "active" },
-    { companyName: "Cairo Drug Industries", email: "sales@cairodrug.com", phoneNumber: "+201003334445", accountStatus: "active" },
-    { companyName: "Delta Med", email: "support@deltamed.com", phoneNumber: "+201004445556", accountStatus: "active" },
-    { companyName: "Arab Medical Co", email: "contact@arabmed.com", phoneNumber: "+201005556667", accountStatus: "active" },
-    { companyName: "Medline Egypt", email: "info@medlineegypt.com", phoneNumber: "+201006667778", accountStatus: "active" },
+    { companyName: "Pharma Egypt", email: "contact@pharmaegypt.com", phoneNumber: "+201001112223", accountStatus: "active", documentImageUrl: "placeholderURL" },
+    { companyName: "Nile Pharma", email: "info@nilepharma.com", phoneNumber: "+201002223334", accountStatus: "active", documentImageUrl: "placeholderURL" },
+    { companyName: "Cairo Drug Industries", email: "sales@cairodrug.com", phoneNumber: "+201003334445", accountStatus: "active", documentImageUrl: "placeholderURL" },
+    { companyName: "Delta Med", email: "support@deltamed.com", phoneNumber: "+201004445556", accountStatus: "active", documentImageUrl: "placeholderURL" },
+    { companyName: "Arab Medical Co", email: "contact@arabmed.com", phoneNumber: "+201005556667", accountStatus: "active", documentImageUrl: "placeholderURL" },
+    { companyName: "Medline Egypt", email: "info@medlineegypt.com", phoneNumber: "+201006667778", accountStatus: "active", documentImageUrl: "placeholderURL" },
 ];
 
 const categories = [
@@ -287,6 +287,7 @@ async function main() {
                     address: `${region.name} Center`,
                     latitude: coords.lat + Math.random() * 0.01,
                     longitude: coords.lng + Math.random() * 0.01,
+                    documentImageUrl: "placeholderURL",
                     currentStatus: "open",
                     accountStatus: "active",
                 },

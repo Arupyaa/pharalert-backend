@@ -90,20 +90,21 @@ model Region {
 }
 
 model Pharmacy {
-  id            String         @id @default(uuid())
-  regionId      BigInt
-  name          String
-  email         String         @unique
-  passwordHash  String
-  address       String
-  latitude      Float
-  longitude     Float
-  openingHour   String?
-  closingHour   String?
-  currentStatus PharmacyStatus
-  accountStatus AccountStatus
-  createdAt     DateTime       @default(now())
-  deletedAt     DateTime?
+  id               String         @id @default(uuid())
+  regionId         BigInt
+  name             String
+  email            String         @unique
+  passwordHash     String
+  address          String
+  latitude         Float
+  longitude        Float
+  documentImageUrl String
+  openingHour      String?
+  closingHour      String?
+  currentStatus    PharmacyStatus
+  accountStatus    AccountStatus
+  createdAt        DateTime       @default(now())
+  deletedAt        DateTime?
 
   region Region @relation(fields: [regionId], references: [id])
 
@@ -123,13 +124,14 @@ model Pharmacy {
 }
 
 model MedicationCompany {
-  id            String        @id @default(uuid())
-  companyName   String
-  email         String        @unique
-  passwordHash  String
-  phoneNumber   String?
-  accountStatus AccountStatus
-  createdAt     DateTime      @default(now())
+  id               String        @id @default(uuid())
+  companyName      String
+  email            String        @unique
+  passwordHash     String
+  phoneNumber      String?
+  documentImageUrl String
+  accountStatus    AccountStatus
+  createdAt        DateTime      @default(now())
 
   medications   Medication[]
   orders        Order[]

@@ -1,46 +1,130 @@
-import { createEndUser } from "../services/registerService.js";
-import { endUserSchema } from "../validators/registerSchemas.js";
 import { loginSchema } from "../validators/loginSchema.js";
 import { loginService } from "../services/loginService.js";
 import { logoutService } from "../services/logoutService.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { serializeBigInt } from "../../../utils/serializeBigInt.js";
+import catchAsync from "../../../utils/catchAsync.js";
+import AppError from "../../../utils/AppError.js";
+import {
+    registerEndUserSchema,
+    registerPharmacySchema,
+    registerCompanySchema,
+} from "../validators/registerSchemas.js";
+
+import {
+    createEndUser,
+    createPharmacy,
+    createCompany,
+} from "../services/registerService.js";
 
 
-export const registerUser = async (req, res) => {
-    const { role } = req.body;
+//registration controllers
 
-    switch (role) {
-        case "pharmacy":
-            return res.status(200).json({ message: "pharmacy registered" });
+export const registerUser =
+    catchAsync(async (req, res) => {
+        const result =
+            registerEndUserSchema.safeParse(
+                req.body
+            );
 
-        case "company":
-            return res.status(200).json({ message: "company registered" });
+        if (!result.success) {
+            throw new AppError(
+                JSON.stringify(
+                    result.error.flatten()
+                ),
+                400
+            );
+        }
 
-        case "user":
-            {
-                const result = endUserSchema.safeParse(req.body);
+        const user =
+            await createEndUser(
+                result.data
+            );
 
-                if (!result.success) {
-                    return res.status(400).json({
-                        message: "Validation failed",
-                        errors: result.error.flatten(),
-                    });
-                }
+        const {
+            passwordHash,
+            ...safeUser
+        } = user;
 
-                const user = await createEndUser(result.data);
-                const { passwordHash, ...safeUser } = user;
+        res.status(201).json({
+            status: "success",
+            message:
+                "User registered successfully",
+            data: serializeBigInt(safeUser),
+        });
+    });
 
-                return res.status(201).json({
-                    message: "user registered",
-                    data: safeUser,
-                });
-            }
+export const registerPharmacy =
+    catchAsync(async (req, res) => {
+        const result =
+            registerPharmacySchema.safeParse(
+                req.body
+            );
 
-        default:
-            return res.status(400).json({ message: "invalid role" });
-    }
-}
+        if (!result.success) {
+            throw new AppError(
+                JSON.stringify(
+                    result.error.flatten()
+                ),
+                400
+            );
+        }
+
+        const pharmacy =
+            await createPharmacy(
+                result.data
+            );
+
+        const {
+            passwordHash,
+            ...safePharmacy
+        } = pharmacy;
+
+        res.status(201).json({
+            status: "success",
+            message:
+                "Pharmacy registration submitted successfully",
+            data: serializeBigInt(safePharmacy),
+        });
+    });
+
+export const registerCompany =
+    catchAsync(async (req, res) => {
+        const result =
+            registerCompanySchema.safeParse(
+                req.body
+            );
+
+        if (!result.success) {
+            throw new AppError(
+                JSON.stringify(
+                    result.error.flatten()
+                ),
+                400
+            );
+        }
+
+        const company =
+            await createCompany(
+                result.data
+            );
+
+        const {
+            passwordHash,
+            ...safeCompany
+        } = company;
+
+        res.status(201).json({
+            status: "success",
+            message:
+                "Company registration submitted successfully",
+            data: serializeBigInt(safeCompany),
+        });
+    });
+
+
+//login and logout controllers
 
 
 export const loginUser = async (req, res) => {
