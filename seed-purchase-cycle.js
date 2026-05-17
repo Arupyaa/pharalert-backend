@@ -19,8 +19,9 @@ async function main() {
     await simulatePharmaciesOverPeriod({
         prisma,
         startDate: "2026-03-01T00:00:00z",
-        endDate: "2026-03-07T23:59:59z",
+        endDate: "2026-04-30T23:59:59z",
         eventsPerDay: 60,
+        preferredMedicationId: 6
     });
 }
 
