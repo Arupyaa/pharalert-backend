@@ -26,7 +26,7 @@ const authenticate = catchAsync(
     try {
       decoded = jwt.verify(
         token,
-        process.env.JWT_ACCESS_SECRET
+        process.env.ACCESS_TOKEN_SECRET
       );
     } catch {
       throw new AppError(

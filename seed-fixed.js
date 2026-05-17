@@ -205,7 +205,7 @@ async function generateMedicationBarcode() {
 
 async function main() {
     console.log("Seeding started...");
-    const hashedPassword = await bcrypt.hash("pass123", 10);
+    const hashedPassword = await bcrypt.hash("pass12345678", 10);
 
     /* ADMIN */
     await prisma.admin.createMany({

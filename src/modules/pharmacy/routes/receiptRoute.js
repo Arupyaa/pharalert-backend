@@ -1,15 +1,10 @@
 import express from "express";
-import { addReceipt, getAllReceipts, getReceipt, getReceiptByMedication, getReceiptsInTable } from "../controllers/receiptController.js";
+import { getPurchases, createPurchase } from "../controllers/purchaseController.js";
+import authenticate from "../../../middlewares/authenticate.js";
+import authorize from "../../../middlewares/authorize.js";
 
-const router = express.Router({
-    mergeParams: true
-});
+const router = express.Router();
 
-router.get("/", getAllReceipts);
-router.get("/table", getReceiptsInTable);
-router.get("/medication/:mid", getReceiptByMedication);
-router.get("/:rid", getReceipt);
-
-router.post("/", addReceipt);
-
+router.get("/", authenticate, authorize("PHARMACY"), getPurchases);
+router.post("/", authenticate, authorize("PHARMACY"), createPurchase);
 export default router;
