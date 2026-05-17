@@ -9,9 +9,7 @@ import { serializeBigInt } from "../../../utils/serializeBigInt.js"
 
 
 export const getInventory = catchAsync(async (req, res) => {
-    const result = getInventorySchema.safeParse({
-        query: req.query,
-    });
+    const result = getInventorySchema.safeParse(req.query);
 
     if (!result.success) {
         throw new AppError(
