@@ -6,9 +6,7 @@ import catchAsync from "../../../utils/catchAsync.js";
 import { createPurchaseSchema } from "../validators/purchaseValidator.js";
 //get request
 export const getPurchases = catchAsync(async (req, res) => {
-    const result = getPurchasesSchema.safeParse({
-        query: req.query,
-    });
+    const result = getPurchasesSchema.safeParse(req.query);
 
     if (!result.success) {
         throw new AppError("Validation failed", 400, result.error.flatten());
@@ -16,7 +14,7 @@ export const getPurchases = catchAsync(async (req, res) => {
 
     const pharmacyId = req.user.id;
 
-    const returnedData = await getPurchasesService(pharmacyId, result.data.query);
+    const returnedData = await getPurchasesService(pharmacyId, result.data);
 
     res.status(200).json({
         status: "success",

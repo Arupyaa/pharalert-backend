@@ -81,8 +81,35 @@ export async function getInventoryService(pharmacyId, query) {
 
     const skip = (page - 1) * limit;
 
+    let stockFilter = {};
+
+    if (stockStatus === "out_of_stock") {
+        stockFilter = {
+            stock: 0,
+        };
+    }
+
+    if (stockStatus === "low_stock") {
+        stockFilter = {
+            stock: {
+                gt: 0,
+                lte: LOW_STOCK_THRESHOLD,
+            },
+        };
+    }
+
+    if (stockStatus === "in_stock") {
+        stockFilter = {
+            stock: {
+                gt: LOW_STOCK_THRESHOLD,
+            },
+        };
+    }
+
     const where = {
         pharmacyId,
+
+        ...stockFilter,
 
         medication: {
             ...(search
@@ -167,11 +194,6 @@ export async function getInventoryService(pharmacyId, query) {
                 medicationDemandLogs
             );
         })
-        .filter(record => {
-            if (!stockStatus) return true;
-
-            return record.stockStatus == stockStatus;
-        });
 
     return {
         recordsCount: totalRecords,
