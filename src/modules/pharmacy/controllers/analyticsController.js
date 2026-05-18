@@ -7,9 +7,9 @@ import { getAnalyticsSummaryService } from "../services/analyticsService.js";
 import { salesPerformanceSchema, } from "../validators/analyticsValidator.js";
 import { getSalesPerformanceService, } from "../services/analyticsService.js";
 
-import { monthlyProfitSchema, topSellingMedicationsSchema, } from "../validators/analyticsValidator.js";
+import { monthlyProfitSchema, topSellingMedicationsSchema, customerActivitySchema } from "../validators/analyticsValidator.js";
 
-import { getMonthlyProfitService, getTopSellingMedicationsService, } from "../services/analyticsService.js";
+import { getMonthlyProfitService, getTopSellingMedicationsService, getCustomerActivityService } from "../services/analyticsService.js";
 
 export const getAnalyticsSummary = catchAsync(
     async (req, res) => {
@@ -125,5 +125,34 @@ export const getTopSellingMedications =
         res.status(200).json({
             status: "success",
             data: serializeBigInt(data),
+        });
+    });
+
+    export const getCustomerActivity =
+    catchAsync(async (req, res) => {
+        const result =
+            customerActivitySchema.safeParse(
+                req.query
+            );
+
+        if (!result.success) {
+            throw new AppError(
+                "Validation failed",
+                400,
+                result.error.flatten()
+            );
+        }
+
+        const pharmacyId = req.user.id;
+
+        const data =
+            await getCustomerActivityService(
+                pharmacyId,
+                result.data
+            );
+
+        res.status(200).json({
+            status: "success",
+            data,
         });
     });

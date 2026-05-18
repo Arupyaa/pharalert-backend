@@ -46,3 +46,15 @@ export const topSellingMedicationsSchema = z.object({
     limit: z.coerce.number().int().min(1).max(20)
         .default(10),
 });
+
+export const customerActivitySchema = z.object({
+    from: z.preprocess(
+        emptyToUndefined,
+        z.coerce.date().optional()
+    ),
+
+    to: z.preprocess(
+        emptyToUndefined,
+        z.coerce.date().optional()
+    ),
+});

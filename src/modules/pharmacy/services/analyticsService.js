@@ -356,3 +356,113 @@ export async function getTopSellingMedicationsService(
 
     return result;
 }
+
+//customer activity analytics service
+
+function formatDate(date) {
+    return new Date(date)
+        .toISOString()
+        .split("T")[0];
+}
+
+export async function getCustomerActivityService(
+    pharmacyId,
+    { from, to }
+) {
+    const dateFilter = buildDateFilter(from, to);
+
+    const purchases = await prisma.purchase.findMany({
+        where: {
+            pharmacyId,
+            ...dateFilter,
+        },
+
+        select: {
+            customerName: true,
+            createdAt: true,
+            totalPrice: true,
+        },
+
+        orderBy: {
+            createdAt: "asc",
+        },
+    });
+
+    const activityMap = new Map();
+
+    for (const purchase of purchases) {
+        const date = formatDate(
+            purchase.createdAt
+        );
+
+        if (!activityMap.has(date)) {
+            activityMap.set(date, {
+                date,
+
+                customersSet: new Set(),
+
+                purchasesCount: 0,
+
+                revenue: 0,
+            });
+        }
+
+        const entry = activityMap.get(date);
+
+        entry.customersSet.add(
+            purchase.customerName
+        );
+
+        entry.purchasesCount += 1;
+
+        entry.revenue += Number(
+            purchase.totalPrice
+        );
+    }
+
+    const chartData = [...activityMap.values()]
+        .map(entry => ({
+            date: entry.date,
+
+            customersCount:
+                entry.customersSet.size,
+
+            purchasesCount:
+                entry.purchasesCount,
+
+            revenue: Number(
+                entry.revenue.toFixed(2)
+            ),
+        }))
+        .sort(
+            (a, b) =>
+                new Date(a.date) -
+                new Date(b.date)
+        );
+
+    const totalCustomers = new Set(
+        purchases.map(p => p.customerName)
+    ).size;
+
+    const totalPurchases = purchases.length;
+
+    const totalRevenue = Number(
+        purchases
+            .reduce(
+                (sum, purchase) =>
+                    sum +
+                    Number(purchase.totalPrice),
+                0
+            )
+            .toFixed(2)
+    );
+
+    //total customers assume unique customers but pharmacy logs customers who doesn't leave their name as customer resulting in incorrect customer amount
+    return {
+        // totalCustomers,
+        // totalPurchases,
+        // totalRevenue,
+
+        chartData,
+    };
+}
