@@ -2,6 +2,8 @@ import prisma from "../../../prisma.js";
 
 const LOW_STOCK_THRESHOLD = 30;
 
+//analytics summary service
+
 function buildDateFilter(from, to) {
     if (!from && !to) return {};
 
@@ -91,7 +93,7 @@ export async function getAnalyticsSummaryService(
     };
 }
 
-////////////////////////////////////////////////////////////////
+//analytics sales performance service
 
 function groupRevenueByDate(purchases) {
     const map = new Map();
@@ -114,7 +116,7 @@ function groupRevenueByDate(purchases) {
         entry.revenue += Number(purchase.totalPrice);
         entry.salesCount += 1;
     }
-    
+
 
     return [...map.values()].sort(
         (a, b) => new Date(a.date) - new Date(b.date)
@@ -166,4 +168,191 @@ export async function getSalesPerformanceService(
         salesCount: purchases.length,
         chartData,
     };
+}
+
+//analytics monthly profit service
+
+export async function getMonthlyProfitService(
+    pharmacyId,
+    { year }
+) {
+    const startDate = new Date(`${year}-01-01`);
+    const endDate = new Date(`${year + 1}-01-01`);
+
+    const purchases = await prisma.purchase.findMany({
+        where: {
+            pharmacyId,
+
+            createdAt: {
+                gte: startDate,
+                lt: endDate,
+            },
+        },
+
+        select: {
+            totalPrice: true,
+            createdAt: true,
+        },
+    });
+
+    const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    ];
+
+    const monthlyMap = new Map();
+
+    months.forEach(month => {
+        monthlyMap.set(month, {
+            month,
+            revenue: 0,
+            salesCount: 0,
+        });
+    });
+
+    for (const purchase of purchases) {
+        const month =
+            months[new Date(purchase.createdAt).getMonth()];
+
+        const entry = monthlyMap.get(month);
+
+        entry.revenue += Number(purchase.totalPrice);
+        entry.salesCount += 1;
+    }
+
+    return [...monthlyMap.values()].map(item => ({
+        ...item,
+        revenue: Number(item.revenue.toFixed(2)),
+    }));
+}
+
+//analytics top selling medications service
+
+export async function getTopSellingMedicationsService(
+    pharmacyId,
+    { from, to, limit }
+) {
+    const dateFilter = buildDateFilter(from, to);
+
+    const [overallItems, rangeItems] =
+        await prisma.$transaction([
+
+            prisma.purchaseItem.findMany({
+                where: {
+                    purchase: {
+                        pharmacyId,
+                    },
+                },
+
+                include: {
+                    medication: {
+                        include: {
+                            category: true,
+                        },
+                    },
+
+                    purchase: true,
+                },
+            }),
+
+            prisma.purchaseItem.findMany({
+                where: {
+                    purchase: {
+                        pharmacyId,
+                        ...dateFilter,
+                    },
+                },
+
+                include: {
+                    medication: {
+                        include: {
+                            category: true,
+                        },
+                    },
+
+                    purchase: true,
+                },
+            }),
+        ]);
+
+    const map = new Map();
+
+    for (const item of overallItems) {
+        const key = item.medicationId.toString();
+
+        if (!map.has(key)) {
+            map.set(key, {
+                medicationId: item.medicationId,
+
+                brandName:
+                    item.medication.brandName,
+
+                genericName:
+                    item.medication.genericName,
+
+                categoryName:
+                    item.medication.category
+                        .categoryName,
+
+                overallRevenue: 0,
+                overallQuantity: 0,
+
+                customRangeRevenue: 0,
+                customRangeQuantity: 0,
+            });
+        }
+
+        const entry = map.get(key);
+
+        entry.overallRevenue +=
+            Number(item.unitPrice) *
+            item.quantity;
+
+        entry.overallQuantity += item.quantity;
+    }
+
+    for (const item of rangeItems) {
+        const key = item.medicationId.toString();
+
+        if (!map.has(key)) continue;
+
+        const entry = map.get(key);
+
+        entry.customRangeRevenue +=
+            Number(item.unitPrice) *
+            item.quantity;
+
+        entry.customRangeQuantity += item.quantity;
+    }
+
+    const result = [...map.values()]
+        .map(item => ({
+            ...item,
+
+            overallRevenue: Number(
+                item.overallRevenue.toFixed(2)
+            ),
+
+            customRangeRevenue: Number(
+                item.customRangeRevenue.toFixed(2)
+            ),
+        }))
+        .sort(
+            (a, b) =>
+                b.customRangeRevenue -
+                a.customRangeRevenue
+        )
+        .slice(0, limit);
+
+    return result;
 }
