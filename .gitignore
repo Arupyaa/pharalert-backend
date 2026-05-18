@@ -3,6 +3,7 @@ node_modules
 /testing
 # Keep environment variables out of version control
 .env
+*.dump
 
 /generated/prisma
 
