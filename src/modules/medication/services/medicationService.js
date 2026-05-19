@@ -42,8 +42,8 @@ export const getMedicationsService = async (query) => {
 
     if (search) {
         where.OR = [
-            { brandName: { contains: search } },
-            { genericName: { contains: search } },
+            { brandName: { contains: search, mode: "insensitive" } },
+            { genericName: { contains: search, mode: "insensitive" } },
         ];
     }
 
@@ -57,8 +57,15 @@ export const getMedicationsService = async (query) => {
 
     const medications = await prisma.medication.findMany({
         where,
-        include: {
-            category: true,
+        select: {
+            id: true,
+            brandName: true,
+            genericName: true,
+            categoryId: true,
+            unitPrice: true,
+            category: {
+                select: { categoryName: true },
+            },
             company: {
                 select: { companyName: true },
             },
@@ -72,8 +79,15 @@ export const getMedicationsService = async (query) => {
 export const getMedicationByIdService = async (id) => {
     const medication = await prisma.medication.findUnique({
         where: { id },
-        include: {
-            category: true,
+        select: {
+            id: true,
+            brandName: true,
+            genericName: true,
+            categoryId: true,
+            unitPrice: true,
+            category: {
+                select: { categoryName: true },
+            },
             company: {
                 select: { companyName: true },
             },
@@ -142,8 +156,8 @@ export const getInStockMedicationsService = async (query) => {
 
     if (search) {
         where.OR = [
-            { brandName: { contains: search } },
-            { genericName: { contains: search } },
+            { brandName: { contains: search, mode: "insensitive" } },
+            { genericName: { contains: search, mode: "insensitive" } },
         ];
     }
 
@@ -157,22 +171,17 @@ export const getInStockMedicationsService = async (query) => {
 
     const medications = await prisma.medication.findMany({
         where,
-        include: {
-            category: true,
+        select: {
+            id: true,
+            brandName: true,
+            genericName: true,
+            categoryId: true,
+            unitPrice: true,
+            category: {
+                select: { categoryName: true },
+            },
             company: {
                 select: { companyName: true },
-            },
-            pharmacyInventory: {
-                where: { stock: { gt: 0 } },
-                select: {
-                    stock: true,
-                    pharmacy: {
-                        select: {
-                            id: true,
-                            name: true,
-                        },
-                    },
-                },
             },
         },
         orderBy: { createdAt: "desc" },
