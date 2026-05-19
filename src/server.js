@@ -5,6 +5,7 @@ import pharmacyRoutes from "./modules/pharmacy/index.js"
 import medicationRoutes from "./modules/medication/index.js"
 import cors from "cors";
 import authRoutes from "./modules/auth/index.js"
+import userRoutes from "./modules/user/index.js"
 import errorMiddleware from "./middlewares/errorMiddleware.js";
 import AppError from "./utils/AppError.js";
 
@@ -17,6 +18,7 @@ app.use(express.json());
 //routes
 app.use("/auth", authRoutes);
 app.use("/pharmacy", pharmacyRoutes);
+app.use("/user", userRoutes);
 app.use("/medications", medicationRoutes);
 
 //error handling middleware
