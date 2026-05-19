@@ -10,5 +10,5 @@ export const pharmacySearchSchema = z.object({
         }),
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(100).default(10),
-    radiusKm: z.coerce.number().positive().default(20),
+    radiusKm: z.coerce.number().positive().default(100),
 });
