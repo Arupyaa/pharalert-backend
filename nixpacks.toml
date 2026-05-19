@@ -1,2 +1,4 @@
+[variables]
+NIXPACKS_NODE_VERSION = "22.14.0"
 [phases.setup]
-nixPkgs = ["nodejs", "postgresql"]
+nixPkgs = ["postgresql"]
