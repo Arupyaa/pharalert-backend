@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
 import pharmacyRoutes from "./modules/pharmacy/index.js"
+import medicationRoutes from "./modules/medication/index.js"
 import cors from "cors";
 import authRoutes from "./modules/auth/index.js"
 import userRoutes from "./modules/user/index.js"
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/pharmacy", pharmacyRoutes);
 app.use("/user", userRoutes);
+app.use("/medications", medicationRoutes);
 
 //error handling middleware
 app.use((req, res, next) => {
