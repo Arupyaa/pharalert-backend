@@ -1,5 +1,5 @@
 import express from "express";
-import { loginUser, logoutUser, registerUser, registerPharmacy, registerCompany, refreshToken } from "../controllers/authController.js";
+import { identifyUser, loginUser, logoutUser, registerUser, registerPharmacy, registerCompany, refreshToken } from "../controllers/authController.js";
 import authenticate from "../../../middlewares/authenticate.js";
 const router = express.Router();
 
@@ -20,4 +20,6 @@ router.post("/refresh",refreshToken)
 
 router.post("/login", loginUser);
 router.post("/logout", logoutUser);
+
+router.get("/identify", authenticate, identifyUser);
 export default router;

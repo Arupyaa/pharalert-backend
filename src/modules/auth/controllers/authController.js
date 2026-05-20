@@ -18,6 +18,7 @@ import {
     createCompany,
 } from "../services/registerService.js";
 import { refreshService } from "../services/refreshService.js";
+import { identifyService } from "../services/identifyService.js";
 
 //registration controllers
 
@@ -179,6 +180,16 @@ export const logoutUser = catchAsync(async (req, res) => {
     });
 });
 
+
+// identify controller
+
+export const identifyUser = catchAsync(async (req, res) => {
+    const account = await identifyService(req.user.id, req.user.accountType);
+    res.status(200).json({
+        status: "success",
+        data: serializeBigInt(account),
+    });
+});
 
 // refresh controller
 
