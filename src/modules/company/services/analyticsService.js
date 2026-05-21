@@ -599,3 +599,70 @@ export const getMedicationsChartsAnalyticsService = async (companyId, { regionId
 
     return results;
 };
+
+export const getPharmaciesChartsAnalyticsService = async (companyId, { regionId, from, to }) => {
+    const region = await prisma.region.findUnique({ where: { id: regionId } });
+    if (!region) throw new AppError("Region not found", 404);
+
+    const medications = await prisma.medication.findMany({
+        where: { companyId, deletedAt: null },
+        select: { id: true, brandName: true },
+        orderBy: { brandName: "asc" },
+    });
+
+    if (medications.length === 0) return [];
+
+    const medicationIds = medications.map(m => m.id);
+
+    const pharmacies = await prisma.pharmacy.findMany({
+        where: { regionId, deletedAt: null, accountStatus: "active" },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+    });
+
+    if (pharmacies.length === 0) return [];
+
+    const pharmacyIds = pharmacies.map(p => p.id);
+
+    const adjustmentsQuery = {
+        medicationId: { in: medicationIds },
+        pharmacyId: { in: pharmacyIds },
+    };
+    if (from != null || to != null) {
+        adjustmentsQuery.createdAt = {};
+        if (from != null) adjustmentsQuery.createdAt.gte = from;
+        if (to != null) adjustmentsQuery.createdAt.lte = to;
+    }
+
+    const adjustments = await prisma.inventoryAdjustment.findMany({
+        where: adjustmentsQuery,
+        select: {
+            pharmacyId: true,
+            medicationId: true,
+            adjustmentType: true,
+            quantity: true,
+        },
+    });
+
+    const pharmacyMedInventory = new Map();
+    for (const adj of adjustments) {
+        const key = `${adj.pharmacyId}_${adj.medicationId}`;
+        const current = pharmacyMedInventory.get(key) || 0;
+        if (adj.adjustmentType === "IN") {
+            pharmacyMedInventory.set(key, current + adj.quantity);
+        } else {
+            pharmacyMedInventory.set(key, current - adj.quantity);
+        }
+    }
+
+    const results = pharmacies.map(pharmacy => {
+        const entry = { pharmacy: pharmacy.name };
+        for (const med of medications) {
+            const key = `${pharmacy.id}_${med.id}`;
+            entry[med.brandName] = pharmacyMedInventory.get(key) || 0;
+        }
+        return entry;
+    });
+
+    return results;
+};
