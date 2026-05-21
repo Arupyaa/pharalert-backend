@@ -3,6 +3,21 @@ import { z } from "zod";
 const emptyToUndefined = value =>
     value == "" ? undefined : value;
 
+export const getRegionsChartsAnalyticsSchema = z.object({
+    medicationId: z.coerce.bigint({
+        invalid_type_error: "medicationId must be a BigInt",
+        required_error: "medicationId is required",
+    }),
+    from: z.preprocess(
+        emptyToUndefined,
+        z.coerce.date().optional()
+    ),
+    to: z.preprocess(
+        emptyToUndefined,
+        z.coerce.date().optional()
+    ),
+});
+
 export const getPharmaciesTableAnalyticsSchema = z.object({
     medicationId: z.coerce.bigint().optional(),
     regionId: z.coerce.bigint().optional(),

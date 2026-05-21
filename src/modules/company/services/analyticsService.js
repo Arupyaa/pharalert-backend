@@ -438,3 +438,84 @@ export const getMedicationsTableAnalyticsService = async (companyId, { regionId,
         data: results,
     };
 };
+
+export const getRegionsChartsAnalyticsService = async (companyId, { medicationId, from, to }) => {
+    const medication = await prisma.medication.findFirst({
+        where: { id: medicationId, companyId, deletedAt: null },
+    });
+    if (!medication) {
+        throw new AppError("Medication not found or does not belong to this company", 404);
+    }
+
+    const adjustmentsQuery = { medicationId };
+    if (from != null || to != null) {
+        adjustmentsQuery.createdAt = {};
+        if (from != null) adjustmentsQuery.createdAt.gte = from;
+        if (to != null) adjustmentsQuery.createdAt.lte = to;
+    }
+
+    const adjustments = await prisma.inventoryAdjustment.findMany({
+        where: adjustmentsQuery,
+        select: {
+            pharmacyId: true,
+            adjustmentType: true,
+            quantity: true,
+        },
+    });
+
+    const pharmacyInventoryMap = new Map();
+    for (const adj of adjustments) {
+        const current = pharmacyInventoryMap.get(adj.pharmacyId) || 0;
+        if (adj.adjustmentType === "IN") {
+            pharmacyInventoryMap.set(adj.pharmacyId, current + adj.quantity);
+        } else {
+            pharmacyInventoryMap.set(adj.pharmacyId, current - adj.quantity);
+        }
+    }
+
+    const activePharmacies = await prisma.pharmacy.findMany({
+        where: { deletedAt: null, accountStatus: "active" },
+        select: { id: true, regionId: true },
+    });
+
+    const regionPharmacyMap = new Map();
+    for (const ph of activePharmacies) {
+        if (!regionPharmacyMap.has(ph.regionId)) {
+            regionPharmacyMap.set(ph.regionId, []);
+        }
+        regionPharmacyMap.get(ph.regionId).push(ph.id);
+    }
+
+    const regions = await prisma.region.findMany({
+        orderBy: { name: "asc" },
+    });
+
+    const results = regions.map(region => {
+        const regionPharmacyIds = regionPharmacyMap.get(region.id) || [];
+
+        let inStock = 0;
+        let critical = 0;
+        let inShortage = 0;
+
+        for (const phId of regionPharmacyIds) {
+            const inventory = pharmacyInventoryMap.get(phId) || 0;
+
+            if (inventory > LOW_STOCK_THRESHOLD) {
+                inStock++;
+            } else if (inventory > 0) {
+                critical++;
+            } else {
+                inShortage++;
+            }
+        }
+
+        return {
+            region: region.name,
+            inStock,
+            critical,
+            inShortage,
+        };
+    });
+
+    return results;
+};
