@@ -1,8 +1,8 @@
 import AppError from "../../../utils/AppError.js";
 import catchAsync from "../../../utils/catchAsync.js";
 import { serializeBigInt } from "../../../utils/serializeBigInt.js";
-import { getMedicationsTableAnalyticsSchema, getPharmaciesTableAnalyticsSchema, getRegionsChartsAnalyticsSchema, getMedicationsChartsAnalyticsSchema, getPharmaciesChartsAnalyticsSchema } from "../validators/analyticsValidator.js";
-import { getMedicationsTableAnalyticsService, getPharmaciesTableAnalyticsService, getRegionsChartsAnalyticsService, getMedicationsChartsAnalyticsService, getPharmaciesChartsAnalyticsService } from "../services/analyticsService.js";
+import { getMedicationsTableAnalyticsSchema, getPharmaciesTableAnalyticsSchema, getRegionsChartsAnalyticsSchema, getMedicationsChartsAnalyticsSchema, getPharmaciesChartsAnalyticsSchema, getDemandChartsAnalyticsSchema, getSummaryAnalyticsSchema } from "../validators/analyticsValidator.js";
+import { getMedicationsTableAnalyticsService, getPharmaciesTableAnalyticsService, getRegionsChartsAnalyticsService, getMedicationsChartsAnalyticsService, getPharmaciesChartsAnalyticsService, getDemandChartsAnalyticsService, getSummaryAnalyticsService } from "../services/analyticsService.js";
 
 export const getPharmaciesTableAnalytics = catchAsync(async (req, res) => {
     const result = getPharmaciesTableAnalyticsSchema.safeParse(req.query);
@@ -133,6 +133,60 @@ export const getPharmaciesChartsAnalytics = catchAsync(async (req, res) => {
     }
 
     const data = await getPharmaciesChartsAnalyticsService(companyId, result.data);
+
+    res.status(200).json({
+        status: "success",
+        data: serializeBigInt(data),
+    });
+});
+
+export const getDemandChartsAnalytics = catchAsync(async (req, res) => {
+    const result = getDemandChartsAnalyticsSchema.safeParse(req.query);
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    let companyId = null;
+
+    if (req.user.accountType === "COMPANY") {
+        companyId = req.user.id;
+    } else if (req.user.accountType === "ADMIN") {
+        companyId = req.query.companyId;
+        if (!companyId) {
+            throw new AppError("companyId is required for admin users", 400);
+        }
+    } else {
+        throw new AppError("Unauthorized access", 403);
+    }
+
+    const data = await getDemandChartsAnalyticsService(companyId, result.data);
+
+    res.status(200).json({
+        status: "success",
+        data: serializeBigInt(data),
+    });
+});
+
+export const getSummaryAnalytics = catchAsync(async (req, res) => {
+    const result = getSummaryAnalyticsSchema.safeParse(req.query);
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    let companyId = null;
+
+    if (req.user.accountType === "COMPANY") {
+        companyId = req.user.id;
+    } else if (req.user.accountType === "ADMIN") {
+        companyId = req.query.companyId;
+        if (!companyId) {
+            throw new AppError("companyId is required for admin users", 400);
+        }
+    } else {
+        throw new AppError("Unauthorized access", 403);
+    }
+
+    const data = await getSummaryAnalyticsService(companyId, result.data);
 
     res.status(200).json({
         status: "success",

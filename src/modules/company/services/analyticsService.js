@@ -520,6 +520,73 @@ export const getRegionsChartsAnalyticsService = async (companyId, { medicationId
     return results;
 };
 
+const DEMAND_TYPES = ["PURCHASED", "REPLACEMENT_ACCEPTED", "REPLACEMENT_REFUSED", "NO_ACTION"];
+
+export const getDemandChartsAnalyticsService = async (companyId, { medicationId, regionId, from, to }) => {
+    const medication = await prisma.medication.findFirst({
+        where: { id: medicationId, companyId, deletedAt: null },
+    });
+    if (!medication) {
+        throw new AppError("Medication not found or does not belong to this company", 404);
+    }
+
+    const pharmacyWhere = { deletedAt: null, accountStatus: "active" };
+    if (regionId != null) pharmacyWhere.regionId = regionId;
+
+    const pharmacies = await prisma.pharmacy.findMany({
+        where: pharmacyWhere,
+        select: { id: true },
+    });
+
+    if (pharmacies.length === 0) return [];
+
+    const pharmacyIds = pharmacies.map(p => p.id);
+
+    const demandQuery = {
+        medicationId,
+        pharmacyId: { in: pharmacyIds },
+    };
+    if (from != null || to != null) {
+        demandQuery.createdAt = {};
+        if (from != null) demandQuery.createdAt.gte = from;
+        if (to != null) demandQuery.createdAt.lte = to;
+    }
+
+    const demandLogs = await prisma.demandLog.findMany({
+        where: demandQuery,
+        select: {
+            demandType: true,
+            createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
+    });
+
+    if (demandLogs.length === 0) return [];
+
+    const dailyTypeCount = new Map();
+    for (const log of demandLogs) {
+        const dateStr = log.createdAt.toISOString().split("T")[0];
+        if (!dailyTypeCount.has(dateStr)) {
+            dailyTypeCount.set(dateStr, {});
+        }
+        const dayData = dailyTypeCount.get(dateStr);
+        dayData[log.demandType] = (dayData[log.demandType] || 0) + 1;
+    }
+
+    const sortedDates = [...dailyTypeCount.keys()].sort();
+
+    const results = sortedDates.map(dateStr => {
+        const dayData = dailyTypeCount.get(dateStr);
+        const entry = { date: dateStr };
+        for (const type of DEMAND_TYPES) {
+            entry[type] = dayData[type] || 0;
+        }
+        return entry;
+    });
+
+    return results;
+};
+
 export const getMedicationsChartsAnalyticsService = async (companyId, { regionId, from, to }) => {
     const medications = await prisma.medication.findMany({
         where: { companyId, deletedAt: null },
@@ -665,4 +732,87 @@ export const getPharmaciesChartsAnalyticsService = async (companyId, { regionId,
     });
 
     return results;
+};
+
+export const getSummaryAnalyticsService = async (companyId, { medicationId, from, to }) => {
+    const medication = await prisma.medication.findFirst({
+        where: { id: medicationId, companyId, deletedAt: null },
+    });
+    if (!medication) {
+        throw new AppError("Medication not found or does not belong to this company", 404);
+    }
+
+    const adjustmentsQuery = { medicationId };
+    if (from != null || to != null) {
+        adjustmentsQuery.createdAt = {};
+        if (from != null) adjustmentsQuery.createdAt.gte = from;
+        if (to != null) adjustmentsQuery.createdAt.lte = to;
+    }
+
+    const adjustments = await prisma.inventoryAdjustment.findMany({
+        where: adjustmentsQuery,
+        select: {
+            pharmacyId: true,
+            adjustmentType: true,
+            quantity: true,
+        },
+    });
+
+    let totalInventory = 0;
+    const pharmacyInventoryMap = new Map();
+    for (const adj of adjustments) {
+        if (adj.adjustmentType === "IN") {
+            totalInventory += adj.quantity;
+            const current = pharmacyInventoryMap.get(adj.pharmacyId) || 0;
+            pharmacyInventoryMap.set(adj.pharmacyId, current + adj.quantity);
+        } else {
+            totalInventory -= adj.quantity;
+            const current = pharmacyInventoryMap.get(adj.pharmacyId) || 0;
+            pharmacyInventoryMap.set(adj.pharmacyId, current - adj.quantity);
+        }
+    }
+
+    const demandQuery = { medicationId };
+    if (from != null || to != null) {
+        demandQuery.createdAt = {};
+        if (from != null) demandQuery.createdAt.gte = from;
+        if (to != null) demandQuery.createdAt.lte = to;
+    }
+
+    const totalDemand = await prisma.demandLog.count({ where: demandQuery });
+
+    const activePharmacies = await prisma.pharmacy.findMany({
+        where: { deletedAt: null, accountStatus: "active" },
+        select: { id: true, regionId: true },
+    });
+
+    const regionCountMap = new Map();
+    const regionIds = new Set();
+    for (const ph of activePharmacies) {
+        const inventory = pharmacyInventoryMap.get(ph.id) || 0;
+        regionIds.add(ph.regionId);
+        if (inventory <= 0) {
+            regionCountMap.set(ph.regionId, (regionCountMap.get(ph.regionId) || 0) + 1);
+        }
+    }
+
+    const regions = await prisma.region.findMany({
+        where: { id: { in: [...regionIds] } },
+        select: { id: true, name: true },
+    });
+
+    const regionNameMap = new Map(regions.map(r => [r.id, r.name]));
+
+    const regionsInShortage = [...regionCountMap.entries()]
+        .map(([regionId, count]) => ({
+            region: regionNameMap.get(regionId),
+            pharmaciesInShortage: count,
+        }))
+        .sort((a, b) => b.pharmaciesInShortage - a.pharmaciesInShortage);
+
+    return {
+        totalInventory,
+        totalDemand,
+        regionsInShortage,
+    };
 };
