@@ -519,3 +519,83 @@ export const getRegionsChartsAnalyticsService = async (companyId, { medicationId
 
     return results;
 };
+
+export const getMedicationsChartsAnalyticsService = async (companyId, { regionId, from, to }) => {
+    const medications = await prisma.medication.findMany({
+        where: { companyId, deletedAt: null },
+        select: { id: true, brandName: true },
+        orderBy: { brandName: "asc" },
+    });
+
+    if (medications.length === 0) return [];
+
+    const medicationIds = medications.map(m => m.id);
+    const medicationNameMap = new Map(medications.map(m => [m.id, m.brandName]));
+
+    const pharmacyWhere = { deletedAt: null, accountStatus: "active" };
+    if (regionId != null) pharmacyWhere.regionId = regionId;
+
+    const pharmacies = await prisma.pharmacy.findMany({
+        where: pharmacyWhere,
+        select: { id: true },
+    });
+
+    if (pharmacies.length === 0) return [];
+
+    const pharmacyIds = pharmacies.map(p => p.id);
+
+    const adjustmentsQuery = {
+        medicationId: { in: medicationIds },
+        pharmacyId: { in: pharmacyIds },
+    };
+    if (from != null || to != null) {
+        adjustmentsQuery.createdAt = {};
+        if (from != null) adjustmentsQuery.createdAt.gte = from;
+        if (to != null) adjustmentsQuery.createdAt.lte = to;
+    }
+
+    const adjustments = await prisma.inventoryAdjustment.findMany({
+        where: adjustmentsQuery,
+        select: {
+            medicationId: true,
+            adjustmentType: true,
+            quantity: true,
+            createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
+    });
+
+    if (adjustments.length === 0) return [];
+
+    const dailyNetChange = new Map();
+    for (const adj of adjustments) {
+        const dateStr = adj.createdAt.toISOString().split("T")[0];
+        if (!dailyNetChange.has(dateStr)) {
+            dailyNetChange.set(dateStr, new Map());
+        }
+        const dayMap = dailyNetChange.get(dateStr);
+        const medId = adj.medicationId;
+        const current = dayMap.get(medId) || 0;
+        dayMap.set(medId, current + (adj.adjustmentType === "IN" ? adj.quantity : -adj.quantity));
+    }
+
+    const sortedDates = [...dailyNetChange.keys()].sort();
+    const runningInventory = new Map();
+
+    const results = sortedDates.map(dateStr => {
+        const dayChanges = dailyNetChange.get(dateStr);
+        const entry = { date: dateStr };
+
+        for (const med of medications) {
+            const change = dayChanges.get(med.id) || 0;
+            const currentRunning = runningInventory.get(med.id) || 0;
+            const newRunning = currentRunning + change;
+            runningInventory.set(med.id, newRunning);
+            entry[med.brandName] = newRunning;
+        }
+
+        return entry;
+    });
+
+    return results;
+};
