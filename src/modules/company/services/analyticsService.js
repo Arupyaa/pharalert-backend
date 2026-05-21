@@ -3,6 +3,235 @@ import AppError from "../../../utils/AppError.js";
 
 const LOW_STOCK_THRESHOLD = 50;
 
+export const getPharmaciesTableAnalyticsService = async (companyId, { medicationId, regionId, status, search, page, limit, from, to, categoryId }) => {
+    // 1. Get company's medications with optional category and medication filters
+    const medicationWhere = { companyId, deletedAt: null };
+    if (categoryId != null) medicationWhere.categoryId = categoryId;
+    if (medicationId != null) medicationWhere.id = medicationId;
+
+    const medications = await prisma.medication.findMany({
+        where: medicationWhere,
+        include: { category: { select: { categoryName: true } } },
+    });
+
+    if (medications.length === 0) {
+        return { recordsCount: 0, page, limit, data: [] };
+    }
+
+    const medicationIds = medications.map(m => m.id);
+
+    // 2. Find pharmacies that have adjustments for any of these medications
+    const adjustmentPharmacies = await prisma.inventoryAdjustment.findMany({
+        where: {
+            medicationId: { in: medicationIds },
+            pharmacy: { deletedAt: null },
+        },
+        select: { pharmacyId: true },
+        distinct: ["pharmacyId"],
+    });
+
+    const inventoryPharmacies = await prisma.pharmacyInventory.findMany({
+        where: {
+            medicationId: { in: medicationIds },
+            pharmacy: { deletedAt: null },
+        },
+        select: { pharmacyId: true },
+        distinct: ["pharmacyId"],
+    });
+
+    let pharmacyIds = [
+        ...new Set([
+            ...adjustmentPharmacies.map(a => a.pharmacyId),
+            ...inventoryPharmacies.map(p => p.pharmacyId),
+        ]),
+    ];
+
+    if (pharmacyIds.length === 0) {
+        return { recordsCount: 0, page, limit, data: [] };
+    }
+
+    // 3. Filter pharmacies by regionId, accountStatus, search
+    const pharmacyWhere = {
+        id: { in: pharmacyIds },
+        deletedAt: null,
+    };
+    if (regionId != null) {
+        pharmacyWhere.regionId = regionId;
+    }
+    if (status != null) {
+        pharmacyWhere.accountStatus = status;
+    }
+    if (search != null && search !== "") {
+        pharmacyWhere.name = { contains: search, mode: "insensitive" };
+    }
+
+    const totalRecords = await prisma.pharmacy.count({ where: pharmacyWhere });
+
+    const pharmacies = await prisma.pharmacy.findMany({
+        where: pharmacyWhere,
+        include: { region: true },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { name: "asc" },
+    });
+
+    const pharmacyIdsFiltered = pharmacies.map(p => p.id);
+
+    // 4. Fetch inventory adjustments with optional date range
+    const adjustmentsQuery = {
+        pharmacyId: { in: pharmacyIdsFiltered },
+        medicationId: { in: medicationIds },
+    };
+    if (from != null || to != null) {
+        adjustmentsQuery.createdAt = {};
+        if (from != null) adjustmentsQuery.createdAt.gte = from;
+        if (to != null) adjustmentsQuery.createdAt.lte = to;
+    }
+
+    const adjustments = await prisma.inventoryAdjustment.findMany({
+        where: adjustmentsQuery,
+        select: {
+            pharmacyId: true,
+            medicationId: true,
+            adjustmentType: true,
+            quantity: true,
+            createdAt: true,
+        },
+    });
+
+    const inventoryMap = new Map();
+    const lastUpdatedMap = new Map();
+
+    for (const adj of adjustments) {
+        const key = `${adj.medicationId}_${adj.pharmacyId}`;
+        if (!inventoryMap.has(key)) {
+            inventoryMap.set(key, { IN: 0, OUT: 0 });
+        }
+        const counts = inventoryMap.get(key);
+        if (adj.adjustmentType === "IN") counts.IN += adj.quantity;
+        else if (adj.adjustmentType === "OUT") counts.OUT += adj.quantity;
+
+        const phId = adj.pharmacyId;
+        const current = lastUpdatedMap.get(phId);
+        if (!current || adj.createdAt > current) {
+            lastUpdatedMap.set(phId, adj.createdAt);
+        }
+    }
+
+    // 5. Fetch demand logs with optional date range
+    const demandQuery = {
+        pharmacyId: { in: pharmacyIdsFiltered },
+        medicationId: { in: medicationIds },
+    };
+    if (from != null || to != null) {
+        demandQuery.createdAt = {};
+        if (from != null) demandQuery.createdAt.gte = from;
+        if (to != null) demandQuery.createdAt.lte = to;
+    }
+
+    const demandLogs = await prisma.demandLog.findMany({ where: demandQuery });
+
+    const demandMap = new Map();
+    for (const log of demandLogs) {
+        const key = `${log.medicationId}_${log.pharmacyId}`;
+        demandMap.set(key, (demandMap.get(key) || 0) + 1);
+    }
+
+    // 6. Fetch replacement stats with optional date range
+    const replacementQuery = {
+        pharmacyId: { in: pharmacyIdsFiltered },
+        medicationId: { in: medicationIds },
+        demandType: { in: ["REPLACEMENT_ACCEPTED", "REPLACEMENT_REFUSED"] },
+    };
+    if (from != null || to != null) {
+        replacementQuery.createdAt = {};
+        if (from != null) replacementQuery.createdAt.gte = from;
+        if (to != null) replacementQuery.createdAt.lte = to;
+    }
+
+    const replacementLogs = await prisma.demandLog.findMany({ where: replacementQuery });
+
+    const replacementMap = new Map();
+    for (const log of replacementLogs) {
+        const key = `${log.medicationId}_${log.pharmacyId}`;
+        if (!replacementMap.has(key)) {
+            replacementMap.set(key, { accepted: 0, refused: 0 });
+        }
+        const stats = replacementMap.get(key);
+        if (log.demandType === "REPLACEMENT_ACCEPTED") stats.accepted++;
+        else stats.refused++;
+    }
+
+    // 7. Build results
+    const results = pharmacies.map(pharmacy => {
+        let shortageCount = 0;
+        let criticalCount = 0;
+        let stockedCount = 0;
+        const pharmacyMeds = [];
+
+        for (const medication of medications) {
+            const key = `${medication.id}_${pharmacy.id}`;
+            const adj = inventoryMap.get(key) || { IN: 0, OUT: 0 };
+
+            if (adj.IN === 0 && adj.OUT === 0) continue;
+
+            const inventory = adj.IN - adj.OUT;
+
+            let inventoryStatus;
+            if (inventory <= 0) {
+                inventoryStatus = "shortage";
+                shortageCount++;
+            } else if (inventory <= LOW_STOCK_THRESHOLD) {
+                inventoryStatus = "critical";
+                criticalCount++;
+            } else {
+                inventoryStatus = "stocked";
+                stockedCount++;
+            }
+
+            const demand = demandMap.get(key) || 0;
+            const replacementStats = replacementMap.get(key) || { accepted: 0, refused: 0 };
+            const totalReplacements = replacementStats.accepted + replacementStats.refused;
+            const percentageAccepted = totalReplacements === 0
+                ? 0
+                : Number(((replacementStats.accepted / totalReplacements) * 100).toFixed(2));
+            const percentageRefused = totalReplacements === 0
+                ? 0
+                : Number(((replacementStats.refused / totalReplacements) * 100).toFixed(2));
+
+            pharmacyMeds.push({
+                medicationName: medication.brandName,
+                generic: medication.genericName,
+                category: medication.category.categoryName,
+                inventoryStatus,
+                inventory,
+                demand,
+                percentageCustomersAcceptedReplacements: percentageAccepted,
+                percentageCustomersRefused: percentageRefused,
+            });
+        }
+
+        return {
+            pharmacyName: pharmacy.name,
+            region: pharmacy.region.name,
+            address: pharmacy.address,
+            accountStatus: pharmacy.accountStatus,
+            noOfMedsInShortage: shortageCount,
+            noOfMedsInCritical: criticalCount,
+            noOfMedsStocked: stockedCount,
+            lastUpdated: lastUpdatedMap.get(pharmacy.id) || null,
+            medications: pharmacyMeds,
+        };
+    });
+
+    return {
+        recordsCount: totalRecords,
+        page,
+        limit,
+        data: results,
+    };
+};
+
 export const getMedicationsTableAnalyticsService = async (companyId, { regionId, categoryId, search, page, limit, from, to }) => {
     // 1. Verify region exists
     const region = await prisma.region.findUnique({
