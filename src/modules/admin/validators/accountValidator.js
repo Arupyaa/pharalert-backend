@@ -15,3 +15,11 @@ export const getAccountsQuerySchema = z.object({
         z.coerce.number().int().min(1).max(100).default(10)
     ),
 });
+
+export const changeAccountStatusParamsSchema = z.object({
+    id: z.string().uuid(),
+});
+
+export const changeAccountStatusBodySchema = z.object({
+    accountStatus: z.enum(["pending", "rejected", "active", "inactive"]),
+});

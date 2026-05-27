@@ -5,9 +5,22 @@ async function countRecords(model, where) {
     return prisma[model].count({ where });
 }
 
-async function fetchAndMap(model, where, accountTypeLabel) {
+const subscriptionInclude = {
+    subscriptions: {
+        select: {
+            id: true,
+            planName: true,
+            startDate: true,
+            endDate: true,
+            createdAt: true,
+        },
+    },
+};
+
+async function fetchAndMap(model, where, accountTypeLabel, include = {}) {
     const accounts = await prisma[model].findMany({
         where,
+        include,
         orderBy: { createdAt: "desc" },
     });
     return accounts.map(a => {
@@ -37,12 +50,13 @@ export async function getAllAccountsService(accountType, accountStatus, page, li
 
     const fetchPromises = [];
     if (!accountStatus) fetchPromises.push(fetchAndMap("admin", {}, "ADMIN"));
-    fetchPromises.push(fetchAndMap("pharmacy", countWherePharmacy, "PHARMACY"));
-    fetchPromises.push(fetchAndMap("medicationCompany", countWhereCompany, "COMPANY"));
+    fetchPromises.push(fetchAndMap("pharmacy", countWherePharmacy, "PHARMACY", subscriptionInclude));
+    fetchPromises.push(fetchAndMap("medicationCompany", countWhereCompany, "COMPANY", subscriptionInclude));
 
     if (!accountStatus) {
         fetchPromises.push(
             prisma.endUser.findMany({
+                include: subscriptionInclude,
                 orderBy: { createdAt: "desc" },
             }).then(accounts =>
                 accounts.map(a => {
@@ -91,6 +105,7 @@ async function getAccountsByType(accountType, accountStatus, skip, limit) {
                 countRecords("pharmacy", where),
                 prisma.pharmacy.findMany({
                     where,
+                    include: subscriptionInclude,
                     skip,
                     take: limit,
                     orderBy: { createdAt: "desc" },
@@ -110,6 +125,7 @@ async function getAccountsByType(accountType, accountStatus, skip, limit) {
                 countRecords("medicationCompany", where),
                 prisma.medicationCompany.findMany({
                     where,
+                    include: subscriptionInclude,
                     skip,
                     take: limit,
                     orderBy: { createdAt: "desc" },
@@ -129,6 +145,7 @@ async function getAccountsByType(accountType, accountStatus, skip, limit) {
                 countRecords("endUser", where),
                 prisma.endUser.findMany({
                     where,
+                    include: subscriptionInclude,
                     skip,
                     take: limit,
                     orderBy: { createdAt: "desc" },
@@ -148,6 +165,7 @@ async function getAccountsByType(accountType, accountStatus, skip, limit) {
                 countRecords("endUser", where),
                 prisma.endUser.findMany({
                     where,
+                    include: subscriptionInclude,
                     skip,
                     take: limit,
                     orderBy: { createdAt: "desc" },
@@ -164,4 +182,34 @@ async function getAccountsByType(accountType, accountStatus, skip, limit) {
         default:
             throw new AppError("Invalid account type", 400);
     }
+}
+
+export async function changeAccountStatusService(accountId, newStatus) {
+    const pharmacy = await prisma.pharmacy.findUnique({
+        where: { id: accountId },
+    });
+
+    if (pharmacy) {
+        const updated = await prisma.pharmacy.update({
+            where: { id: accountId },
+            data: { accountStatus: newStatus },
+        });
+        const { passwordHash, ...rest } = updated;
+        return { ...rest, accountType: "PHARMACY" };
+    }
+
+    const company = await prisma.medicationCompany.findUnique({
+        where: { id: accountId },
+    });
+
+    if (company) {
+        const updated = await prisma.medicationCompany.update({
+            where: { id: accountId },
+            data: { accountStatus: newStatus },
+        });
+        const { passwordHash, ...rest } = updated;
+        return { ...rest, accountType: "COMPANY" };
+    }
+
+    throw new AppError("Account not found or is not a pharmacy/company account", 404);
 }
