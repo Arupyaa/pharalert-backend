@@ -23,3 +23,11 @@ export const changeAccountStatusParamsSchema = z.object({
 export const changeAccountStatusBodySchema = z.object({
     accountStatus: z.enum(["pending", "rejected", "active", "inactive"]),
 });
+
+export const changeUserTypeParamsSchema = z.object({
+    id: z.string().uuid(),
+});
+
+export const changeUserTypeBodySchema = z.object({
+    userType: z.enum(["free", "paid"]),
+});

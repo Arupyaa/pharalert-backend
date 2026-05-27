@@ -5,10 +5,13 @@ import {
     getAccountsQuerySchema,
     changeAccountStatusParamsSchema,
     changeAccountStatusBodySchema,
+    changeUserTypeParamsSchema,
+    changeUserTypeBodySchema,
 } from "../validators/accountValidator.js";
 import {
     getAllAccountsService,
     changeAccountStatusService,
+    changeUserTypeService,
 } from "../services/accountService.js";
 
 export const getAllAccounts = catchAsync(async (req, res) => {
@@ -54,5 +57,28 @@ export const changeAccountStatus = catchAsync(async (req, res) => {
         status: "success",
         message: "Account status updated successfully",
         data: serializeBigInt(account),
+    });
+});
+
+export const changeUserType = catchAsync(async (req, res) => {
+    const paramsResult = changeUserTypeParamsSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+        throw new AppError("Validation failed", 400, paramsResult.error.flatten());
+    }
+
+    const bodyResult = changeUserTypeBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+        throw new AppError("Validation failed", 400, bodyResult.error.flatten());
+    }
+
+    const user = await changeUserTypeService(
+        paramsResult.data.id,
+        bodyResult.data.userType
+    );
+
+    res.status(200).json({
+        status: "success",
+        message: "User type updated successfully",
+        data: serializeBigInt(user),
     });
 });

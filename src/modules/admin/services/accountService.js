@@ -213,3 +213,24 @@ export async function changeAccountStatusService(accountId, newStatus) {
 
     throw new AppError("Account not found or is not a pharmacy/company account", 404);
 }
+
+export async function changeUserTypeService(userId, newUserType) {
+    const user = await prisma.endUser.findUnique({
+        where: { id: userId },
+    });
+
+    if (!user) {
+        throw new AppError("EndUser account not found", 404);
+    }
+
+    const updated = await prisma.endUser.update({
+        where: { id: userId },
+        data: { accountType: newUserType },
+    });
+
+    const { passwordHash, ...rest } = updated;
+    return {
+        ...rest,
+        accountType: newUserType === "paid" ? "PAID_USER" : "FREE_USER",
+    };
+}
