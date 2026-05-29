@@ -9,6 +9,8 @@ import userRoutes from "./modules/user/index.js"
 import companyRoutes from "./modules/company/index.js"
 import regionRoutes from "./modules/region/index.js"
 import categoryRoutes from "./modules/category/index.js"
+import settingsRoutes from "./modules/settings/index.js"
+import adminRoutes from "./modules/admin/index.js"
 import errorMiddleware from "./middlewares/errorMiddleware.js";
 import AppError from "./utils/AppError.js";
 
@@ -26,6 +28,8 @@ app.use("/medications", medicationRoutes);
 app.use("/company", companyRoutes);
 app.use("/regions", regionRoutes);
 app.use("/categories", categoryRoutes);
+app.use("/settings", settingsRoutes);
+app.use("/admin", adminRoutes);
 
 //error handling middleware
 app.use((req, res, next) => {
