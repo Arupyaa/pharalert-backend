@@ -3,9 +3,9 @@ import AppError from "../../../utils/AppError.js";
 
 const LOW_STOCK_THRESHOLD = 50;
 
-export const getPharmaciesTableAnalyticsService = async (companyId, { medicationId, regionId, status, search, page, limit, from, to, categoryId }) => {
-    // 1. Get company's medications with optional category and medication filters
-    const medicationWhere = { companyId, deletedAt: null };
+export const getPharmaciesTableAnalyticsService = async ({ medicationId, regionId, status, search, page, limit, from, to, categoryId }) => {
+    // 1. Get all medications with optional category and medication filters
+    const medicationWhere = { deletedAt: null };
     if (categoryId != null) medicationWhere.categoryId = categoryId;
     if (medicationId != null) medicationWhere.id = medicationId;
 
@@ -232,7 +232,7 @@ export const getPharmaciesTableAnalyticsService = async (companyId, { medication
     };
 };
 
-export const getMedicationsTableAnalyticsService = async (companyId, { regionId, categoryId, search, page, limit, from, to }) => {
+export const getMedicationsTableAnalyticsService = async ({ regionId, categoryId, search, page, limit, from, to }) => {
     // 1. Verify region exists
     const region = await prisma.region.findUnique({
         where: { id: regionId },
@@ -254,9 +254,8 @@ export const getMedicationsTableAnalyticsService = async (companyId, { regionId,
     });
     const pharmacyIds = activePharmacies.map((p) => p.id);
 
-    // 3. Query medications for this company
+    // 3. Query all medications
     const whereClause = {
-        companyId: companyId,
         deletedAt: null,
     };
     if (categoryId != null) {
@@ -439,12 +438,12 @@ export const getMedicationsTableAnalyticsService = async (companyId, { regionId,
     };
 };
 
-export const getRegionsChartsAnalyticsService = async (companyId, { medicationId, from, to }) => {
+export const getRegionsChartsAnalyticsService = async ({ medicationId, from, to }) => {
     const medication = await prisma.medication.findFirst({
-        where: { id: medicationId, companyId, deletedAt: null },
+        where: { id: medicationId, deletedAt: null },
     });
     if (!medication) {
-        throw new AppError("Medication not found or does not belong to this company", 404);
+        throw new AppError("Medication not found", 404);
     }
 
     const adjustmentsQuery = { medicationId };
@@ -522,12 +521,12 @@ export const getRegionsChartsAnalyticsService = async (companyId, { medicationId
 
 const DEMAND_TYPES = ["PURCHASED", "REPLACEMENT_ACCEPTED", "REPLACEMENT_REFUSED", "NO_ACTION"];
 
-export const getDemandChartsAnalyticsService = async (companyId, { medicationId, regionId, from, to }) => {
+export const getDemandChartsAnalyticsService = async ({ medicationId, regionId, from, to }) => {
     const medication = await prisma.medication.findFirst({
-        where: { id: medicationId, companyId, deletedAt: null },
+        where: { id: medicationId, deletedAt: null },
     });
     if (!medication) {
-        throw new AppError("Medication not found or does not belong to this company", 404);
+        throw new AppError("Medication not found", 404);
     }
 
     const pharmacyWhere = { deletedAt: null, accountStatus: "active" };
@@ -587,9 +586,9 @@ export const getDemandChartsAnalyticsService = async (companyId, { medicationId,
     return results;
 };
 
-export const getMedicationsChartsAnalyticsService = async (companyId, { regionId, from, to }) => {
+export const getMedicationsChartsAnalyticsService = async ({ regionId, from, to }) => {
     const medications = await prisma.medication.findMany({
-        where: { companyId, deletedAt: null },
+        where: { deletedAt: null },
         select: { id: true, brandName: true },
         orderBy: { brandName: "asc" },
     });
@@ -667,12 +666,12 @@ export const getMedicationsChartsAnalyticsService = async (companyId, { regionId
     return results;
 };
 
-export const getPharmaciesChartsAnalyticsService = async (companyId, { regionId, from, to }) => {
+export const getPharmaciesChartsAnalyticsService = async ({ regionId, from, to }) => {
     const region = await prisma.region.findUnique({ where: { id: regionId } });
     if (!region) throw new AppError("Region not found", 404);
 
     const medications = await prisma.medication.findMany({
-        where: { companyId, deletedAt: null },
+        where: { deletedAt: null },
         select: { id: true, brandName: true },
         orderBy: { brandName: "asc" },
     });
@@ -734,12 +733,12 @@ export const getPharmaciesChartsAnalyticsService = async (companyId, { regionId,
     return results;
 };
 
-export const getSummaryAnalyticsService = async (companyId, { medicationId, from, to }) => {
+export const getSummaryAnalyticsService = async ({ medicationId, from, to }) => {
     const medication = await prisma.medication.findFirst({
-        where: { id: medicationId, companyId, deletedAt: null },
+        where: { id: medicationId, deletedAt: null },
     });
     if (!medication) {
-        throw new AppError("Medication not found or does not belong to this company", 404);
+        throw new AppError("Medication not found", 404);
     }
 
     const adjustmentsQuery = { medicationId };

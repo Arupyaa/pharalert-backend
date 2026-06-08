@@ -10,20 +10,7 @@ export const getPharmaciesTableAnalytics = catchAsync(async (req, res) => {
         throw new AppError("Validation failed", 400, result.error.flatten());
     }
 
-    let companyId = null;
-
-    if (req.user.accountType === "COMPANY") {
-        companyId = req.user.id;
-    } else if (req.user.accountType === "ADMIN") {
-        companyId = req.query.companyId;
-        if (!companyId) {
-            throw new AppError("companyId is required for admin users", 400);
-        }
-    } else {
-        throw new AppError("Unauthorized access", 403);
-    }
-
-    const data = await getPharmaciesTableAnalyticsService(companyId, result.data);
+    const data = await getPharmaciesTableAnalyticsService(result.data);
 
     res.status(200).json({
         status: "success",
@@ -37,21 +24,7 @@ export const getMedicationsTableAnalytics = catchAsync(async (req, res) => {
         throw new AppError("Validation failed", 400, result.error.flatten());
     }
 
-    let companyId = null;
-
-    if (req.user.accountType == "COMPANY") {
-        companyId = req.user.id;
-    } else if (req.user.accountType == "ADMIN") {
-        // Admins can query analytics for any specific company by passing companyId in the query parameters
-        companyId = req.query.companyId;
-        if (!companyId) {
-            throw new AppError("companyId is required for admin users", 400);
-        }
-    } else {
-        throw new AppError("Unauthorized access", 403);
-    }
-
-    const data = await getMedicationsTableAnalyticsService(companyId, result.data);
+    const data = await getMedicationsTableAnalyticsService(result.data);
 
     res.status(200).json({
         status: "success",
@@ -65,20 +38,7 @@ export const getRegionsChartsAnalytics = catchAsync(async (req, res) => {
         throw new AppError("Validation failed", 400, result.error.flatten());
     }
 
-    let companyId = null;
-
-    if (req.user.accountType === "COMPANY") {
-        companyId = req.user.id;
-    } else if (req.user.accountType === "ADMIN") {
-        companyId = req.query.companyId;
-        if (!companyId) {
-            throw new AppError("companyId is required for admin users", 400);
-        }
-    } else {
-        throw new AppError("Unauthorized access", 403);
-    }
-
-    const data = await getRegionsChartsAnalyticsService(companyId, result.data);
+    const data = await getRegionsChartsAnalyticsService(result.data);
 
     res.status(200).json({
         status: "success",
@@ -92,20 +52,7 @@ export const getMedicationsChartsAnalytics = catchAsync(async (req, res) => {
         throw new AppError("Validation failed", 400, result.error.flatten());
     }
 
-    let companyId = null;
-
-    if (req.user.accountType === "COMPANY") {
-        companyId = req.user.id;
-    } else if (req.user.accountType === "ADMIN") {
-        companyId = req.query.companyId;
-        if (!companyId) {
-            throw new AppError("companyId is required for admin users", 400);
-        }
-    } else {
-        throw new AppError("Unauthorized access", 403);
-    }
-
-    const data = await getMedicationsChartsAnalyticsService(companyId, result.data);
+    const data = await getMedicationsChartsAnalyticsService(result.data);
 
     res.status(200).json({
         status: "success",
@@ -119,20 +66,7 @@ export const getPharmaciesChartsAnalytics = catchAsync(async (req, res) => {
         throw new AppError("Validation failed", 400, result.error.flatten());
     }
 
-    let companyId = null;
-
-    if (req.user.accountType === "COMPANY") {
-        companyId = req.user.id;
-    } else if (req.user.accountType === "ADMIN") {
-        companyId = req.query.companyId;
-        if (!companyId) {
-            throw new AppError("companyId is required for admin users", 400);
-        }
-    } else {
-        throw new AppError("Unauthorized access", 403);
-    }
-
-    const data = await getPharmaciesChartsAnalyticsService(companyId, result.data);
+    const data = await getPharmaciesChartsAnalyticsService(result.data);
 
     res.status(200).json({
         status: "success",
@@ -146,20 +80,7 @@ export const getDemandChartsAnalytics = catchAsync(async (req, res) => {
         throw new AppError("Validation failed", 400, result.error.flatten());
     }
 
-    let companyId = null;
-
-    if (req.user.accountType === "COMPANY") {
-        companyId = req.user.id;
-    } else if (req.user.accountType === "ADMIN") {
-        companyId = req.query.companyId;
-        if (!companyId) {
-            throw new AppError("companyId is required for admin users", 400);
-        }
-    } else {
-        throw new AppError("Unauthorized access", 403);
-    }
-
-    const data = await getDemandChartsAnalyticsService(companyId, result.data);
+    const data = await getDemandChartsAnalyticsService(result.data);
 
     res.status(200).json({
         status: "success",
@@ -173,20 +94,7 @@ export const getSummaryAnalytics = catchAsync(async (req, res) => {
         throw new AppError("Validation failed", 400, result.error.flatten());
     }
 
-    let companyId = null;
-
-    if (req.user.accountType === "COMPANY") {
-        companyId = req.user.id;
-    } else if (req.user.accountType === "ADMIN") {
-        companyId = req.query.companyId;
-        if (!companyId) {
-            throw new AppError("companyId is required for admin users", 400);
-        }
-    } else {
-        throw new AppError("Unauthorized access", 403);
-    }
-
-    const data = await getSummaryAnalyticsService(companyId, result.data);
+    const data = await getSummaryAnalyticsService(result.data);
 
     res.status(200).json({
         status: "success",
