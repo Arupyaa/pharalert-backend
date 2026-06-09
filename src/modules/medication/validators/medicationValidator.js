@@ -4,7 +4,8 @@ export const createMedicationSchema = z.object({
     brandName: z.string().trim().min(1).max(255),
     genericName: z.string().trim().min(1).max(255),
     categoryId: z.coerce.bigint().positive(),
-    companyId: z.string().uuid(),
+    companyId: z.string().uuid().optional(),
+    manufacturingCompany: z.string().trim().max(255).optional(),
     unitPrice: z.number().positive(),
 });
 
@@ -13,6 +14,7 @@ export const updateMedicationSchema = z.object({
     genericName: z.string().trim().min(1).max(255).optional(),
     categoryId: z.coerce.bigint().positive().optional(),
     companyId: z.string().uuid().optional(),
+    manufacturingCompany: z.string().trim().max(255).optional(),
     unitPrice: z.number().positive().optional(),
 });
 

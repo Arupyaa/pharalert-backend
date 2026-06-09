@@ -14,6 +14,7 @@ import {
     getInStockMedicationsService,
     updateMedicationService,
     deleteMedicationService,
+    getUnlinkedMedicationsService,
 } from "../services/medicationService.js";
 
 export const createMedication = catchAsync(async (req, res) => {
@@ -22,10 +23,18 @@ export const createMedication = catchAsync(async (req, res) => {
         throw new AppError("Validation failed", 400, result.error.flatten());
     }
 
-    const medication = await createMedicationService(result.data);
+    const medication = await createMedicationService(result.data, req.user);
     res.status(201).json({
         status: "success",
         data: serializeBigInt(medication),
+    });
+});
+
+export const getUnlinkedMedications = catchAsync(async (req, res) => {
+    const medications = await getUnlinkedMedicationsService();
+    res.status(200).json({
+        status: "success",
+        data: serializeBigInt(medications),
     });
 });
 
@@ -72,7 +81,7 @@ export const updateMedication = catchAsync(async (req, res) => {
     }
 
     const id = BigInt(req.params.id);
-    const medication = await updateMedicationService(id, result.data);
+    const medication = await updateMedicationService(id, result.data, req.user);
     res.status(200).json({
         status: "success",
         data: serializeBigInt(medication),
@@ -82,7 +91,7 @@ export const updateMedication = catchAsync(async (req, res) => {
 export const deleteMedication = catchAsync(async (req, res) => {
     const id = BigInt(req.params.id);
 
-    await deleteMedicationService(id);
+    await deleteMedicationService(id, req.user);
     res.status(200).json({
         status: "success",
         message: "Medication deleted successfully",

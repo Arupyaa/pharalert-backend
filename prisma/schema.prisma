@@ -30,6 +30,12 @@ enum AdjustmentReason {
   OPENING_STOCK // IN
 }
 
+enum OTPType {
+  VERIFY_EMAIL
+  FORGOT_PASSWORD
+  CHANGE_PASSWORD
+}
+
 enum AccountStatus {
   pending
   rejected
@@ -65,6 +71,17 @@ enum ReservationStatus {
   delivered
 }
 
+model OTP {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  type      OTPType
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
 //////////////////////
 // CORE TABLES
 //////////////////////
@@ -84,7 +101,8 @@ model Region {
   name      String
   createdAt DateTime @default(now())
 
-  pharmacies Pharmacy[]
+  pharmacies              Pharmacy[]
+  stockAlertSubscriptions StockAlertSubscription[]
 
   @@index([name])
 }
@@ -108,15 +126,16 @@ model Pharmacy {
 
   region Region @relation(fields: [regionId], references: [id])
 
-  purchases            Purchase[]
-  orders               Order[]
-  inventory            PharmacyInventory[]
-  demandLogs           DemandLog[]
-  replacements         Replacement[]
-  subscriptions        Subscription[]
-  rejections           Rejection[]
-  inventoryAdjustments InventoryAdjustment[]
-  refreshTokens        RefreshToken[]
+  purchases              Purchase[]
+  orders                 Order[]
+  inventory              PharmacyInventory[]
+  demandLogs             DemandLog[]
+  replacements           Replacement[]
+  subscriptions          Subscription[]
+  rejections             Rejection[]
+  inventoryAdjustments   InventoryAdjustment[]
+  refreshTokens          RefreshToken[]
+  stockAlertSubscriptions StockAlertSubscription[]
 
   @@index([regionId])
   @@index([name])
@@ -133,13 +152,28 @@ model MedicationCompany {
   accountStatus    AccountStatus
   createdAt        DateTime      @default(now())
 
-  medications   Medication[]
-  orders        Order[]
-  subscriptions Subscription[]
-  rejections    Rejection[]
-  refreshTokens RefreshToken[]
+  medications           Medication[]
+  orders                Order[]
+  subscriptions         Subscription[]
+  rejections            Rejection[]
+  refreshTokens         RefreshToken[]
+  suggestedMedications  CompanySuggestedMedication[]
 
   @@index([companyName])
+}
+
+model CompanySuggestedMedication {
+  id           BigInt   @id @default(autoincrement())
+  companyId    String
+  medicationId BigInt
+  createdAt    DateTime @default(now())
+
+  company   MedicationCompany @relation(fields: [companyId], references: [id])
+  medication Medication       @relation(fields: [medicationId], references: [id])
+
+  @@unique([companyId, medicationId])
+  @@index([companyId])
+  @@index([medicationId])
 }
 
 model EndUser {
@@ -201,17 +235,19 @@ model MedicationCategory {
 }
 
 model Medication {
-  id          BigInt    @id @default(autoincrement())
-  brandName   String
-  genericName String
-  categoryId  BigInt
-  companyId   String
-  unitPrice   Decimal
-  createdAt   DateTime  @default(now())
-  deletedAt   DateTime?
+  id                   BigInt    @id @default(autoincrement())
+  brandName            String
+  genericName          String
+  categoryId           BigInt
+  companyId            String?
+  manufacturingCompany String?
+  createdBy            String?
+  unitPrice            Decimal
+  createdAt            DateTime  @default(now())
+  deletedAt            DateTime?
 
   category MedicationCategory @relation(fields: [categoryId], references: [id])
-  company  MedicationCompany  @relation(fields: [companyId], references: [id])
+  company  MedicationCompany? @relation(fields: [companyId], references: [id])
 
   replacementsFrom MedicationReplacement[] @relation("OriginalMedication")
   replacementsTo   MedicationReplacement[] @relation("ReplacementMedication")
@@ -222,8 +258,9 @@ model Medication {
   orderItems              OrderItem[]
   stockAlertSubscriptions StockAlertSubscription[]
   inventoryAdjustments    InventoryAdjustment[]
-  barcodes                MedicationBarcode[]
-  purchaseItems           PurchaseItem[]
+  barcodes                 MedicationBarcode[]
+  purchaseItems            PurchaseItem[]
+  companySuggestedMedications CompanySuggestedMedication[]
 
   @@index([categoryId])
   @@index([companyId])
@@ -472,15 +509,21 @@ model StockAlertSubscription {
   id           BigInt    @id @default(autoincrement())
   userId       String
   medicationId BigInt
+  regionId     BigInt?
+  pharmacyId   String?
   createdAt    DateTime  @default(now())
   notifiedAt   DateTime?
   isActive     Boolean   @default(true)
 
   user       EndUser    @relation(fields: [userId], references: [id])
   medication Medication @relation(fields: [medicationId], references: [id])
+  region     Region?    @relation(fields: [regionId], references: [id])
+  pharmacy   Pharmacy?  @relation(fields: [pharmacyId], references: [id])
 
   @@index([userId])
   @@index([medicationId])
+  @@index([regionId])
+  @@index([pharmacyId])
 }
 
 model RefreshToken {

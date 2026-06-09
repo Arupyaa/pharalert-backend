@@ -7,11 +7,16 @@ import {
     changeAccountStatusBodySchema,
     changeUserTypeParamsSchema,
     changeUserTypeBodySchema,
+    companyIdParamsSchema,
+    updateSuggestedMedicationsBodySchema,
 } from "../validators/accountValidator.js";
 import {
     getAllAccountsService,
     changeAccountStatusService,
     changeUserTypeService,
+    getCompanyByIdService,
+    updateSuggestedMedicationsService,
+    linkSuggestedMedicationsService,
 } from "../services/accountService.js";
 
 export const getAllAccounts = catchAsync(async (req, res) => {
@@ -80,5 +85,56 @@ export const changeUserType = catchAsync(async (req, res) => {
         status: "success",
         message: "User type updated successfully",
         data: serializeBigInt(user),
+    });
+});
+
+export const getCompanyById = catchAsync(async (req, res) => {
+    const paramsResult = companyIdParamsSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+        throw new AppError("Validation failed", 400, paramsResult.error.flatten());
+    }
+
+    const company = await getCompanyByIdService(paramsResult.data.id);
+
+    res.status(200).json({
+        status: "success",
+        data: serializeBigInt(company),
+    });
+});
+
+export const updateSuggestedMedications = catchAsync(async (req, res) => {
+    const paramsResult = companyIdParamsSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+        throw new AppError("Validation failed", 400, paramsResult.error.flatten());
+    }
+
+    const bodyResult = updateSuggestedMedicationsBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+        throw new AppError("Validation failed", 400, bodyResult.error.flatten());
+    }
+
+    const company = await updateSuggestedMedicationsService(
+        paramsResult.data.id,
+        bodyResult.data.suggestedMedicationIds
+    );
+
+    res.status(200).json({
+        status: "success",
+        data: serializeBigInt(company),
+    });
+});
+
+export const linkSuggestedMedications = catchAsync(async (req, res) => {
+    const paramsResult = companyIdParamsSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+        throw new AppError("Validation failed", 400, paramsResult.error.flatten());
+    }
+
+    const result = await linkSuggestedMedicationsService(paramsResult.data.id);
+
+    res.status(200).json({
+        status: "success",
+        message: "Suggested medications linked successfully",
+        data: result,
     });
 });

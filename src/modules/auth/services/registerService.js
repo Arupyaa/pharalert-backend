@@ -170,5 +170,19 @@ export const createCompany =
                 }
             );
 
+        if (
+            data.suggestedMedicationIds &&
+            data.suggestedMedicationIds.length > 0
+        ) {
+            await prisma.companySuggestedMedication.createMany({
+                data: data.suggestedMedicationIds.map(
+                    (medicationId) => ({
+                        companyId: company.id,
+                        medicationId,
+                    })
+                ),
+            });
+        }
+
         return company;
     };

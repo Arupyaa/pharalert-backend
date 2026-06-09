@@ -83,6 +83,19 @@ const categories = [
     "Allergy",
 ];
 
+const manufacturingCompanies = [
+    "Global Pharma Industries",
+    "MediHealth Corp",
+    "VitaPlus Labs",
+    "Apex Pharmaceuticals",
+    "CareFirst Medicines",
+    "Nile Pharmaceuticals",
+    "Green Valley Pharma",
+    "Atlas Medica",
+    "Primex Drugs",
+    "Sahara Healthcare",
+];
+
 /* =========================
    MEDICATIONS (REALISTIC)
 ========================= */
@@ -245,13 +258,22 @@ async function main() {
     const medicationRecords = [];
 
     for (const m of medications) {
+        const isUnlinked = Math.random() < 0.4;
+
+        const manufacturingCompany = isUnlinked
+            ? manufacturingCompanies[Math.floor(Math.random() * manufacturingCompanies.length)]
+            : (Math.random() < 0.4
+                ? companies[m.companyIndex].companyName
+                : manufacturingCompanies[Math.floor(Math.random() * manufacturingCompanies.length)]);
+
         // Create medication
         const medication = await prisma.medication.create({
             data: {
                 brandName: m.brandName,
                 genericName: m.genericName,
                 categoryId: categoryRecords[m.categoryIndex].id,
-                companyId: companyRecords[m.companyIndex].id,
+                companyId: isUnlinked ? null : companyRecords[m.companyIndex].id,
+                manufacturingCompany,
                 unitPrice: m.unitPrice,
             },
         });

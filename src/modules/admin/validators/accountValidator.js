@@ -31,3 +31,11 @@ export const changeUserTypeParamsSchema = z.object({
 export const changeUserTypeBodySchema = z.object({
     userType: z.enum(["free", "paid"]),
 });
+
+export const companyIdParamsSchema = z.object({
+    id: z.string().uuid(),
+});
+
+export const updateSuggestedMedicationsBodySchema = z.object({
+    suggestedMedicationIds: z.array(z.coerce.bigint().positive()),
+});

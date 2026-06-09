@@ -1,7 +1,7 @@
 import prisma from "../../../prisma.js";
 import AppError from "../../../utils/AppError.js";
 
-export const createMedicationService = async (data) => {
+export const createMedicationService = async (data, user) => {
     const category = await prisma.medicationCategory.findUnique({
         where: { id: data.categoryId },
     });
@@ -9,11 +9,13 @@ export const createMedicationService = async (data) => {
         throw new AppError("Category not found", 404);
     }
 
-    const company = await prisma.medicationCompany.findUnique({
-        where: { id: data.companyId },
-    });
-    if (!company) {
-        throw new AppError("Company not found", 404);
+    if (data.companyId) {
+        const company = await prisma.medicationCompany.findUnique({
+            where: { id: data.companyId },
+        });
+        if (!company) {
+            throw new AppError("Company not found", 404);
+        }
     }
 
     const medication = await prisma.medication.create({
@@ -21,7 +23,9 @@ export const createMedicationService = async (data) => {
             brandName: data.brandName,
             genericName: data.genericName,
             categoryId: data.categoryId,
-            companyId: data.companyId,
+            companyId: data.companyId ?? null,
+            manufacturingCompany: data.manufacturingCompany,
+            createdBy: user.id,
             unitPrice: data.unitPrice,
         },
         include: {
@@ -101,13 +105,17 @@ export const getMedicationByIdService = async (id) => {
     return medication;
 };
 
-export const updateMedicationService = async (id, data) => {
+export const updateMedicationService = async (id, data, user) => {
     const existing = await prisma.medication.findUnique({
         where: { id },
     });
 
     if (!existing || existing.deletedAt) {
         throw new AppError("Medication not found", 404);
+    }
+
+    if (user.accountType !== "ADMIN" && existing.createdBy !== user.id) {
+        throw new AppError("Forbidden: you can only modify medications you created", 403);
     }
 
     if (data.categoryId) {
@@ -190,13 +198,36 @@ export const getInStockMedicationsService = async (query) => {
     return medications;
 };
 
-export const deleteMedicationService = async (id) => {
+export const getUnlinkedMedicationsService = async () => {
+    const medications = await prisma.medication.findMany({
+        where: { companyId: null, deletedAt: null },
+        select: {
+            id: true,
+            brandName: true,
+            genericName: true,
+            manufacturingCompany: true,
+            unitPrice: true,
+            category: {
+                select: { categoryName: true },
+            },
+        },
+        orderBy: { brandName: "asc" },
+    });
+
+    return medications;
+};
+
+export const deleteMedicationService = async (id, user) => {
     const existing = await prisma.medication.findUnique({
         where: { id },
     });
 
     if (!existing || existing.deletedAt) {
         throw new AppError("Medication not found", 404);
+    }
+
+    if (user.accountType !== "ADMIN" && existing.createdBy !== user.id) {
+        throw new AppError("Forbidden: you can only delete medications you created", 403);
     }
 
     const medication = await prisma.medication.update({
