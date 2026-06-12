@@ -27,6 +27,8 @@ import { verifyEmailSchema } from "../validators/verifyEmailSchema.js";
 import { resendVerificationSchema } from "../validators/resendVerificationSchema.js";
 import { forgotPasswordSchema } from "../validators/forgotPasswordSchema.js";
 import { resetPasswordSchema } from "../validators/resetPasswordSchema.js";
+import { purchaseSubscriptionSchema } from "../validators/subscriptionValidator.js";
+import { purchaseSubscriptionService, getUserSubscriptionsService } from "../services/subscriptionService.js";
 
 //registration controllers
 
@@ -196,6 +198,40 @@ export const resetPassword = catchAsync(async (req, res) => {
     res.status(200).json({
         status: "success",
         message: "Password reset successfully",
+    });
+});
+
+// subscription controllers
+
+export const subscribe = catchAsync(async (req, res) => {
+    const result = purchaseSubscriptionSchema.safeParse(req.body);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    const subscription = await purchaseSubscriptionService(
+        req.user.id,
+        req.user.accountType,
+        result.data.paymentMethod
+    );
+
+    res.status(201).json({
+        status: "success",
+        message: "Subscription purchased successfully",
+        data: serializeBigInt(subscription),
+    });
+});
+
+export const getSubscriptions = catchAsync(async (req, res) => {
+    const subscriptions = await getUserSubscriptionsService(
+        req.user.id,
+        req.user.accountType
+    );
+
+    res.status(200).json({
+        status: "success",
+        data: serializeBigInt(subscriptions),
     });
 });
 

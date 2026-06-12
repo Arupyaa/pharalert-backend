@@ -127,15 +127,15 @@ model Pharmacy {
 
   region Region @relation(fields: [regionId], references: [id])
 
-  purchases              Purchase[]
-  orders                 Order[]
-  inventory              PharmacyInventory[]
-  demandLogs             DemandLog[]
-  replacements           Replacement[]
-  subscriptions          Subscription[]
-  rejections             Rejection[]
-  inventoryAdjustments   InventoryAdjustment[]
-  refreshTokens          RefreshToken[]
+  purchases               Purchase[]
+  orders                  Order[]
+  inventory               PharmacyInventory[]
+  demandLogs              DemandLog[]
+  replacements            Replacement[]
+  subscriptions           Subscription[]
+  rejections              Rejection[]
+  inventoryAdjustments    InventoryAdjustment[]
+  refreshTokens           RefreshToken[]
   stockAlertSubscriptions StockAlertSubscription[]
 
   @@index([regionId])
@@ -154,12 +154,12 @@ model MedicationCompany {
   accountStatus    AccountStatus
   createdAt        DateTime      @default(now())
 
-  medications           Medication[]
-  orders                Order[]
-  subscriptions         Subscription[]
-  rejections            Rejection[]
-  refreshTokens         RefreshToken[]
-  suggestedMedications  CompanySuggestedMedication[]
+  medications          Medication[]
+  orders               Order[]
+  subscriptions        Subscription[]
+  rejections           Rejection[]
+  refreshTokens        RefreshToken[]
+  suggestedMedications CompanySuggestedMedication[]
 
   @@index([companyName])
 }
@@ -170,8 +170,8 @@ model CompanySuggestedMedication {
   medicationId BigInt
   createdAt    DateTime @default(now())
 
-  company   MedicationCompany @relation(fields: [companyId], references: [id])
-  medication Medication       @relation(fields: [medicationId], references: [id])
+  company    MedicationCompany @relation(fields: [companyId], references: [id])
+  medication Medication        @relation(fields: [medicationId], references: [id])
 
   @@unique([companyId, medicationId])
   @@index([companyId])
@@ -186,11 +186,11 @@ model EndUser {
   isEmailVerified Boolean         @default(false)
   phoneNumber     String?
   accountType     UserAccountType
-  address      String?
-  latitude     Float?
-  longitude    Float?
-  createdAt    DateTime        @default(now())
-  deletedAt    DateTime?
+  address         String?
+  latitude        Float?
+  longitude       Float?
+  createdAt       DateTime        @default(now())
+  deletedAt       DateTime?
 
   reservations  Reservation[]
   subscriptions Subscription[]
@@ -255,14 +255,14 @@ model Medication {
   replacementsFrom MedicationReplacement[] @relation("OriginalMedication")
   replacementsTo   MedicationReplacement[] @relation("ReplacementMedication")
 
-  pharmacyInventory       PharmacyInventory[]
-  demandLogs              DemandLog[]
-  reservationItems        ReservationItem[]
-  orderItems              OrderItem[]
-  stockAlertSubscriptions StockAlertSubscription[]
-  inventoryAdjustments    InventoryAdjustment[]
-  barcodes                 MedicationBarcode[]
-  purchaseItems            PurchaseItem[]
+  pharmacyInventory           PharmacyInventory[]
+  demandLogs                  DemandLog[]
+  reservationItems            ReservationItem[]
+  orderItems                  OrderItem[]
+  stockAlertSubscriptions     StockAlertSubscription[]
+  inventoryAdjustments        InventoryAdjustment[]
+  barcodes                    MedicationBarcode[]
+  purchaseItems               PurchaseItem[]
   companySuggestedMedications CompanySuggestedMedication[]
 
   @@index([categoryId])
@@ -345,7 +345,7 @@ model Order {
   paymentStatus     PaymentStatus
   createdAt         DateTime      @default(now())
 
-  pharmacy        Pharmacy          @relation(fields: [pharmacyId], references: [id])
+  pharmacy        Pharmacy           @relation(fields: [pharmacyId], references: [id])
   supplierCompany MedicationCompany? @relation(fields: [supplierCompanyId], references: [id])
 
   items                OrderItem[]
@@ -524,6 +524,8 @@ model StockAlertSubscription {
   region     Region?    @relation(fields: [regionId], references: [id])
   pharmacy   Pharmacy?  @relation(fields: [pharmacyId], references: [id])
 
+  @@unique([userId, medicationId, regionId])
+  @@unique([userId, medicationId, pharmacyId])
   @@index([userId])
   @@index([medicationId])
   @@index([regionId])
