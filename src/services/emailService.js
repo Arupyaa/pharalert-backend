@@ -16,6 +16,25 @@ export async function sendOtpEmail(email, otp, subject = "Password Change OTP") 
     await transporter.sendMail(mailOptions);
 }
 
+export async function sendStockAlertEmail(email, medicationName, pharmacyName) {
+    const subject = pharmacyName
+        ? `Medication Back in Stock at ${pharmacyName}`
+        : "Medication Back in Stock in Your Region";
+
+    const locationText = pharmacyName
+        ? `is now back in stock at ${pharmacyName}`
+        : "is now back in stock in your region";
+
+    const mailOptions = {
+        from: process.env.EMAIL_FROM || "pharalert@local",
+        to: email,
+        subject,
+        text: `Good news!\n\n${medicationName} ${locationText}.\n\nVisit PharAlert to purchase or reserve it.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+}
+
 export async function sendVerificationEmail(email, token) {
     const link = `http://localhost:8080/auth/verify-email?token=${token}`;
 

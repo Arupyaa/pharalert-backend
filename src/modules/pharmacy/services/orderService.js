@@ -26,6 +26,8 @@ export async function createOrderService(pharmacyId, data) {
         totalPrice += unitPrice * item.quantity;
     }
 
+    const restockedMedications = [];
+
     const order = await prisma.$transaction(async (tx) => {
         const createdOrder = await tx.order.create({
             data: {
@@ -57,6 +59,8 @@ export async function createOrderService(pharmacyId, data) {
                 },
             });
 
+            const previousStock = existingInventory?.stock || 0;
+
             if (existingInventory) {
                 await tx.pharmacyInventory.update({
                     where: { id: existingInventory.id },
@@ -74,6 +78,10 @@ export async function createOrderService(pharmacyId, data) {
                         updatedAt: new Date(),
                     },
                 });
+            }
+
+            if (previousStock === 0) {
+                restockedMedications.push(item.medicationId);
             }
         }
 
@@ -100,6 +108,13 @@ export async function createOrderService(pharmacyId, data) {
 
         return createdOrder;
     });
+
+    if (restockedMedications.length > 0) {
+        const { checkAndNotifyStockAlert } = await import("../../user/services/stockAlertService.js");
+        for (const medicationId of restockedMedications) {
+            await checkAndNotifyStockAlert(pharmacyId, medicationId);
+        }
+    }
 
     return order;
 }
