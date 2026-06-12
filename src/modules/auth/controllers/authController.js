@@ -21,8 +21,12 @@ import { refreshService } from "../services/refreshService.js";
 import { identifyService } from "../services/identifyService.js";
 import { verifyEmailService } from "../services/verifyEmailService.js";
 import { resendVerificationService } from "../services/resendVerificationService.js";
+import { forgotPasswordService } from "../services/forgotPasswordService.js";
+import { resetPasswordService } from "../services/resetPasswordService.js";
 import { verifyEmailSchema } from "../validators/verifyEmailSchema.js";
 import { resendVerificationSchema } from "../validators/resendVerificationSchema.js";
+import { forgotPasswordSchema } from "../validators/forgotPasswordSchema.js";
+import { resetPasswordSchema } from "../validators/resetPasswordSchema.js";
 
 //registration controllers
 
@@ -155,6 +159,43 @@ export const resendVerification = catchAsync(async (req, res) => {
     res.status(200).json({
         status: "success",
         message: "Verification email sent",
+    });
+});
+
+//forgot & reset password controllers
+
+export const forgotPassword = catchAsync(async (req, res) => {
+    const result = forgotPasswordSchema.safeParse(req.body);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    await forgotPasswordService(result.data.email, result.data.accountType);
+
+    res.status(200).json({
+        status: "success",
+        message: "OTP sent to your email",
+    });
+});
+
+export const resetPassword = catchAsync(async (req, res) => {
+    const result = resetPasswordSchema.safeParse(req.body);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    await resetPasswordService(
+        result.data.email,
+        result.data.accountType,
+        result.data.otp,
+        result.data.newPassword
+    );
+
+    res.status(200).json({
+        status: "success",
+        message: "Password reset successfully",
     });
 });
 
