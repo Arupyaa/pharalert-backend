@@ -412,33 +412,105 @@ async function seedStockAlertSubscriptions({
         });
 
     // =========================
+    // PHARMACIES WITH REGIONS
+    // =========================
+
+    const pharmacies =
+        await prisma.pharmacy.findMany({
+            select: {
+                id: true,
+                regionId: true,
+            },
+        });
+
+    const pharmacyRegionMap = new Map();
+    const regionPharmaciesMap = new Map();
+
+    for (const p of pharmacies) {
+        pharmacyRegionMap.set(p.id, p.regionId);
+
+        const rid = p.regionId.toString();
+        if (!regionPharmaciesMap.has(rid)) {
+            regionPharmaciesMap.set(rid, []);
+        }
+        regionPharmaciesMap.get(rid).push(p.id);
+    }
+
+    // =========================
     // STOCK SNAPSHOT
     // =========================
 
     const stock =
         await findAllStockByMedication(date);
 
+    // Build medication -> pharmacyId -> stock map
+    const medicationStockMap = new Map();
+
+    for (const med of stock) {
+        const pharmacyMap = new Map();
+        for (const p of med.pharmacies) {
+            pharmacyMap.set(p.pharmacyId, p.stock);
+        }
+        medicationStockMap.set(
+            med.medicationId.toString(),
+            pharmacyMap
+        );
+    }
+
     // =========================
-    // OUT OF STOCK IN ALL PHARMACIES
+    // PER-REGION & PER-PHARMACY
+    // OUT OF STOCK
     // =========================
 
-    const outOfStockMedicationIds =
-        stock
-            .filter((medication) =>
-                medication.pharmacies.every(
-                    (pharmacy) =>
-                        pharmacy.stock <= 0
-                )
-            )
-            .map((medication) =>
-                medication.medicationId
+    const medOutOfStockRegions = new Map();
+    const medOutOfStockPharmacies = new Map();
+
+    for (const med of stock) {
+        const medId = med.medicationId.toString();
+        const regions = [];
+        const outOfStockPharmacies = [];
+
+        // Per-region: all region pharmacies have 0 stock
+        for (const [rid, pharmacyIds] of regionPharmaciesMap) {
+            const allOut = pharmacyIds.every((pid) => {
+                const pharmacyMap =
+                    medicationStockMap.get(medId);
+                if (!pharmacyMap) return true;
+                const s = pharmacyMap.get(pid);
+                return s === undefined || s <= 0;
+            });
+            if (allOut) {
+                regions.push(BigInt(rid));
+            }
+        }
+
+        // Per-pharmacy: stock <= 0
+        for (const p of med.pharmacies) {
+            if (p.stock <= 0) {
+                outOfStockPharmacies.push(p.pharmacyId);
+            }
+        }
+
+        if (regions.length > 0) {
+            medOutOfStockRegions.set(
+                med.medicationId,
+                regions
             );
+        }
+        if (outOfStockPharmacies.length > 0) {
+            medOutOfStockPharmacies.set(
+                med.medicationId,
+                outOfStockPharmacies
+            );
+        }
+    }
 
     if (
-        outOfStockMedicationIds.length === 0
+        medOutOfStockRegions.size === 0 &&
+        medOutOfStockPharmacies.size === 0
     ) {
         console.log(
-            "No globally out of stock medications found."
+            "No out of stock medications found for any region or pharmacy."
         );
         return;
     }
@@ -453,10 +525,32 @@ async function seedStockAlertSubscriptions({
             continue;
         }
 
-        const medicationId =
-            randomElement(
-                outOfStockMedicationIds
+        const useRegion =
+            medOutOfStockRegions.size > 0 &&
+            (medOutOfStockPharmacies.size === 0 ||
+                Math.random() < 0.5);
+
+        let medicationId;
+        let regionId = null;
+        let pharmacyId = null;
+
+        if (useRegion) {
+            const medIds = Array.from(
+                medOutOfStockRegions.keys()
             );
+            medicationId = randomElement(medIds);
+            regionId = randomElement(
+                medOutOfStockRegions.get(medicationId)
+            );
+        } else {
+            const medIds = Array.from(
+                medOutOfStockPharmacies.keys()
+            );
+            medicationId = randomElement(medIds);
+            pharmacyId = randomElement(
+                medOutOfStockPharmacies.get(medicationId)
+            );
+        }
 
         const createdAt =
             randomDateBetween(
@@ -470,6 +564,8 @@ async function seedStockAlertSubscriptions({
             data: {
                 userId: user.id,
                 medicationId,
+                regionId,
+                pharmacyId,
                 createdAt,
                 notifiedAt: null,
                 isActive: true,

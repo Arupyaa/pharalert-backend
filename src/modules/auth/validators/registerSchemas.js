@@ -91,4 +91,7 @@ export const registerCompanySchema =
 
         documentImageUrl:
             z.url(),
+
+        suggestedMedicationIds:
+            z.array(z.coerce.bigint().positive()).optional(),
     });

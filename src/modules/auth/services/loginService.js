@@ -146,15 +146,15 @@ export const loginService =
             );
         }
 
-        if (
-            account.accountStatus ===
-            "inactive"
-        ) {
-            throw new AppError(
-                "Account inactive",
-                403
-            );
-        }
+        // if (
+        //     account.accountStatus ===
+        //     "inactive"
+        // ) {
+        //     throw new AppError(
+        //         "Account inactive",
+        //         403
+        //     );
+        // }
 
         /*
           Unified JWT payload

@@ -1,6 +1,22 @@
 import prisma from "../../../prisma.js";
 import AppError from "../../../utils/AppError.js";
 
+const suggestedMedicationsInclude = {
+    suggestedMedications: {
+        include: {
+            medication: {
+                select: {
+                    id: true,
+                    brandName: true,
+                    genericName: true,
+                    manufacturingCompany: true,
+                    unitPrice: true,
+                },
+            },
+        },
+    },
+};
+
 async function countRecords(model, where) {
     return prisma[model].count({ where });
 }
@@ -125,7 +141,10 @@ async function getAccountsByType(accountType, accountStatus, skip, limit) {
                 countRecords("medicationCompany", where),
                 prisma.medicationCompany.findMany({
                     where,
-                    include: subscriptionInclude,
+                    include: {
+                        ...subscriptionInclude,
+                        ...suggestedMedicationsInclude,
+                    },
                     skip,
                     take: limit,
                     orderBy: { createdAt: "desc" },
@@ -212,6 +231,75 @@ export async function changeAccountStatusService(accountId, newStatus) {
     }
 
     throw new AppError("Account not found or is not a pharmacy/company account", 404);
+}
+
+export async function getCompanyByIdService(companyId) {
+    const company = await prisma.medicationCompany.findUnique({
+        where: { id: companyId },
+        include: {
+            ...subscriptionInclude,
+            ...suggestedMedicationsInclude,
+        },
+    });
+
+    if (!company) {
+        throw new AppError("Company not found", 404);
+    }
+
+    const { passwordHash, ...rest } = company;
+    return { ...rest, accountType: "COMPANY" };
+}
+
+export async function updateSuggestedMedicationsService(companyId, medicationIds) {
+    const company = await prisma.medicationCompany.findUnique({
+        where: { id: companyId },
+    });
+    if (!company) {
+        throw new AppError("Company not found", 404);
+    }
+
+    await prisma.$transaction(async (tx) => {
+        await tx.companySuggestedMedication.deleteMany({
+            where: { companyId },
+        });
+
+        if (medicationIds.length > 0) {
+            await tx.companySuggestedMedication.createMany({
+                data: medicationIds.map((medicationId) => ({
+                    companyId,
+                    medicationId,
+                })),
+            });
+        }
+    });
+
+    return getCompanyByIdService(companyId);
+}
+
+export async function linkSuggestedMedicationsService(companyId) {
+    const company = await prisma.medicationCompany.findUnique({
+        where: { id: companyId },
+    });
+    if (!company) {
+        throw new AppError("Company not found", 404);
+    }
+
+    const suggestions = await prisma.companySuggestedMedication.findMany({
+        where: { companyId },
+    });
+
+    if (suggestions.length === 0) {
+        throw new AppError("No suggested medications to link", 400);
+    }
+
+    const medicationIds = suggestions.map((s) => s.medicationId);
+
+    await prisma.medication.updateMany({
+        where: { id: { in: medicationIds } },
+        data: { companyId: company.id },
+    });
+
+    return { linkedCount: medicationIds.length, companyId: company.id };
 }
 
 export async function changeUserTypeService(userId, newUserType) {

@@ -18,8 +18,8 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
     await simulatePharmaciesOverPeriod({
         prisma,
-        startDate: "2026-03-01T00:00:00z",
-        endDate: "2026-04-30T23:59:59z",
+        startDate: "2026-04-01T00:00:00z",
+        endDate: "2026-05-30T23:59:59z",
         eventsPerDay: 60,
         preferredMedicationId: 6
     });
