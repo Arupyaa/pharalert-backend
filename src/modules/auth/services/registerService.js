@@ -1,6 +1,8 @@
 import prisma from "../../../prisma.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import AppError from "../../../utils/AppError.js";
+import { sendVerificationEmail } from "../../../services/emailService.js";
 
 
 export const createEndUser =
@@ -61,6 +63,14 @@ export const createEndUser =
                 },
             });
 
+        const token = jwt.sign(
+            { email: user.email, model: "endUser" },
+            process.env.VERIFY_EMAIL_SECRET,
+            { expiresIn: "24h" }
+        );
+
+        await sendVerificationEmail(user.email, token);
+
         return user;
     };
 
@@ -118,6 +128,14 @@ export const createPharmacy =
                         data.documentImageUrl,
                 },
             });
+
+        const token = jwt.sign(
+            { email: pharmacy.email, model: "pharmacy" },
+            process.env.VERIFY_EMAIL_SECRET,
+            { expiresIn: "24h" }
+        );
+
+        await sendVerificationEmail(pharmacy.email, token);
 
         return pharmacy;
     };
@@ -183,6 +201,14 @@ export const createCompany =
                 ),
             });
         }
+
+        const token = jwt.sign(
+            { email: company.email, model: "medicationCompany" },
+            process.env.VERIFY_EMAIL_SECRET,
+            { expiresIn: "24h" }
+        );
+
+        await sendVerificationEmail(company.email, token);
 
         return company;
     };

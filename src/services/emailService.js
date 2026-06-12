@@ -15,3 +15,16 @@ export async function sendOtpEmail(email, otp) {
 
     await transporter.sendMail(mailOptions);
 }
+
+export async function sendVerificationEmail(email, token) {
+    const link = `http://localhost:8080/auth/verify-email?token=${token}`;
+
+    const mailOptions = {
+        from: process.env.EMAIL_FROM || "pharalert@local",
+        to: email,
+        subject: "Verify your email address",
+        text: `Welcome to PharAlert!\n\nPlease verify your email address by clicking the link below:\n\n${link}\n\nThis link expires in 24 hours.\n\nIf you did not create an account, please ignore this email.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+}

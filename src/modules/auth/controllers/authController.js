@@ -19,6 +19,10 @@ import {
 } from "../services/registerService.js";
 import { refreshService } from "../services/refreshService.js";
 import { identifyService } from "../services/identifyService.js";
+import { verifyEmailService } from "../services/verifyEmailService.js";
+import { resendVerificationService } from "../services/resendVerificationService.js";
+import { verifyEmailSchema } from "../validators/verifyEmailSchema.js";
+import { resendVerificationSchema } from "../validators/resendVerificationSchema.js";
 
 //registration controllers
 
@@ -121,6 +125,38 @@ export const registerCompany =
         });
     });
 
+
+//email verification controller
+
+export const verifyEmail = catchAsync(async (req, res) => {
+    const result = verifyEmailSchema.safeParse(req.query);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    await verifyEmailService(result.data.token);
+
+    res.status(200).json({
+        status: "success",
+        message: "Email verified successfully",
+    });
+});
+
+export const resendVerification = catchAsync(async (req, res) => {
+    const result = resendVerificationSchema.safeParse(req.body);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    await resendVerificationService(result.data.email, result.data.accountType);
+
+    res.status(200).json({
+        status: "success",
+        message: "Verification email sent",
+    });
+});
 
 //login controller
 

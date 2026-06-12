@@ -122,6 +122,10 @@ export const loginService =
                     : "FREE_USER";
         }
 
+        if (account.isEmailVerified === false) {
+            throw new AppError("Please verify your email before logging in", 403);
+        }
+
         /*
           Optional account status checks
         */

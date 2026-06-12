@@ -113,6 +113,7 @@ model Pharmacy {
   name             String
   email            String         @unique
   passwordHash     String
+  isEmailVerified  Boolean        @default(false)
   address          String
   latitude         Float
   longitude        Float
@@ -147,6 +148,7 @@ model MedicationCompany {
   companyName      String
   email            String        @unique
   passwordHash     String
+  isEmailVerified  Boolean       @default(false)
   phoneNumber      String?
   documentImageUrl String
   accountStatus    AccountStatus
@@ -177,12 +179,13 @@ model CompanySuggestedMedication {
 }
 
 model EndUser {
-  id           String          @id @default(uuid())
-  userName     String          @unique
-  email        String          @unique
-  passwordHash String
-  phoneNumber  String?
-  accountType  UserAccountType
+  id              String          @id @default(uuid())
+  userName        String          @unique
+  email           String          @unique
+  passwordHash    String
+  isEmailVerified Boolean         @default(false)
+  phoneNumber     String?
+  accountType     UserAccountType
   address      String?
   latitude     Float?
   longitude    Float?
