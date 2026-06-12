@@ -336,13 +336,14 @@ model InventoryAdjustment {
 model Order {
   id                BigInt        @id @default(autoincrement())
   pharmacyId        String
-  supplierCompanyId String
+  supplierCompanyId String?
+  supplierName      String
   totalPrice        Decimal
   paymentStatus     PaymentStatus
   createdAt         DateTime      @default(now())
 
   pharmacy        Pharmacy          @relation(fields: [pharmacyId], references: [id])
-  supplierCompany MedicationCompany @relation(fields: [supplierCompanyId], references: [id])
+  supplierCompany MedicationCompany? @relation(fields: [supplierCompanyId], references: [id])
 
   items                OrderItem[]
   payments             Payment[]
