@@ -19,6 +19,16 @@ import {
 } from "../services/registerService.js";
 import { refreshService } from "../services/refreshService.js";
 import { identifyService } from "../services/identifyService.js";
+import { verifyEmailService } from "../services/verifyEmailService.js";
+import { resendVerificationService } from "../services/resendVerificationService.js";
+import { forgotPasswordService } from "../services/forgotPasswordService.js";
+import { resetPasswordService } from "../services/resetPasswordService.js";
+import { verifyEmailSchema } from "../validators/verifyEmailSchema.js";
+import { resendVerificationSchema } from "../validators/resendVerificationSchema.js";
+import { forgotPasswordSchema } from "../validators/forgotPasswordSchema.js";
+import { resetPasswordSchema } from "../validators/resetPasswordSchema.js";
+import { purchaseSubscriptionSchema } from "../validators/subscriptionValidator.js";
+import { purchaseSubscriptionService, getUserSubscriptionsService } from "../services/subscriptionService.js";
 
 //registration controllers
 
@@ -121,6 +131,109 @@ export const registerCompany =
         });
     });
 
+
+//email verification controller
+
+export const verifyEmail = catchAsync(async (req, res) => {
+    const result = verifyEmailSchema.safeParse(req.query);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    await verifyEmailService(result.data.token);
+
+    res.status(200).json({
+        status: "success",
+        message: "Email verified successfully",
+    });
+});
+
+export const resendVerification = catchAsync(async (req, res) => {
+    const result = resendVerificationSchema.safeParse(req.body);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    await resendVerificationService(result.data.email, result.data.accountType);
+
+    res.status(200).json({
+        status: "success",
+        message: "Verification email sent",
+    });
+});
+
+//forgot & reset password controllers
+
+export const forgotPassword = catchAsync(async (req, res) => {
+    const result = forgotPasswordSchema.safeParse(req.body);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    await forgotPasswordService(result.data.email, result.data.accountType);
+
+    res.status(200).json({
+        status: "success",
+        message: "OTP sent to your email",
+    });
+});
+
+export const resetPassword = catchAsync(async (req, res) => {
+    const result = resetPasswordSchema.safeParse(req.body);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    await resetPasswordService(
+        result.data.email,
+        result.data.accountType,
+        result.data.otp,
+        result.data.newPassword
+    );
+
+    res.status(200).json({
+        status: "success",
+        message: "Password reset successfully",
+    });
+});
+
+// subscription controllers
+
+export const subscribe = catchAsync(async (req, res) => {
+    const result = purchaseSubscriptionSchema.safeParse(req.body);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    const subscription = await purchaseSubscriptionService(
+        req.user.id,
+        req.user.accountType,
+        result.data.paymentMethod
+    );
+
+    res.status(201).json({
+        status: "success",
+        message: "Subscription purchased successfully",
+        data: serializeBigInt(subscription),
+    });
+});
+
+export const getSubscriptions = catchAsync(async (req, res) => {
+    const subscriptions = await getUserSubscriptionsService(
+        req.user.id,
+        req.user.accountType
+    );
+
+    res.status(200).json({
+        status: "success",
+        data: serializeBigInt(subscriptions),
+    });
+});
 
 //login controller
 

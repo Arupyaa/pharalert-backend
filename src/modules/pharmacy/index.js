@@ -5,6 +5,7 @@ import salesRoutes from "./routes/salesRoute.js"
 import demandRoutes from "./routes/demandRoutes.js"
 import analyticsRoutes from "./routes/analyticsRoutes.js"
 import barcodeRoutes from "./routes/barcodeRoute.js"
+import orderRoutes from "./routes/orderRoutes.js"
 
 const router = express.Router();
 
@@ -14,4 +15,5 @@ router.use("/sales", salesRoutes);
 router.use("/demand", demandRoutes);
 router.use("/analytics", analyticsRoutes);
 router.use("/barcode", barcodeRoutes);
+router.use("/orders", orderRoutes);
 export default router;

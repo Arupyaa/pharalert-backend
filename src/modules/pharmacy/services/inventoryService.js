@@ -1,4 +1,5 @@
 import prisma from "../../../prisma.js";
+import AppError from "../../../utils/AppError.js";
 
 const LOW_STOCK_THRESHOLD = 30;
 
@@ -47,7 +48,7 @@ function buildInventoryRow(inventory, demandLogs) {
         genericName: inventory.medication.genericName,
 
         categoryName: inventory.medication.category.categoryName,
-        companyName: inventory.medication.company.companyName,
+        companyName: inventory.medication.company?.companyName ?? inventory.medication.manufacturingCompany,
 
         stock: inventory.stock,
 
@@ -207,6 +208,58 @@ export async function getInventoryService(pharmacyId, query) {
 //get inventory by medicationId service code
 
 
+export async function addInventoryService(pharmacyId, data) {
+    const { medicationId, quantity, notes } = data;
+
+    const medication = await prisma.medication.findUnique({
+        where: { id: medicationId },
+    });
+
+    if (!medication) {
+        throw new AppError("Medication not found", 404);
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+        const existingInventory = await tx.pharmacyInventory.findFirst({
+            where: { pharmacyId, medicationId },
+        });
+
+        if (existingInventory) {
+            await tx.pharmacyInventory.update({
+                where: { id: existingInventory.id },
+                data: {
+                    stock: { increment: quantity },
+                    updatedAt: new Date(),
+                },
+            });
+        } else {
+            await tx.pharmacyInventory.create({
+                data: {
+                    pharmacyId,
+                    medicationId,
+                    stock: quantity,
+                    updatedAt: new Date(),
+                },
+            });
+        }
+
+        const adjustment = await tx.inventoryAdjustment.create({
+            data: {
+                pharmacyId,
+                medicationId,
+                adjustmentType: "IN",
+                quantity,
+                reason: "MANUAL_ADJUSTMENT",
+                notes: notes || null,
+            },
+        });
+
+        return adjustment;
+    });
+
+    return result;
+}
+
 export async function getInventoryByMedicationIdService(pharmacyId, medicationId) {
     const inventory = await prisma.pharmacyInventory.findFirst({
         where: {
@@ -233,7 +286,7 @@ export async function getInventoryByMedicationIdService(pharmacyId, medicationId
         genericName: inventory.medication.genericName,
 
         categoryName: inventory.medication.category.categoryName,
-        companyName: inventory.medication.company.companyName,
+        companyName: inventory.medication.company?.companyName ?? inventory.medication.manufacturingCompany,
 
         stock: inventory.stock,
         stockStatus: getStockStatus(inventory.stock),

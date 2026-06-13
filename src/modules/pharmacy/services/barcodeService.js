@@ -5,6 +5,7 @@ const medicationSelect = {
     id: true,
     brandName: true,
     genericName: true,
+    manufacturingCompany: true,
     unitPrice: true,
     category: { select: { categoryName: true } },
     company: { select: { companyName: true } },

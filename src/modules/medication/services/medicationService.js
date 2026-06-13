@@ -36,8 +36,12 @@ export const createMedicationService = async (data, user) => {
         },
     });
 
-    return medication;
+    return { ...medication, companyName: computeCompanyName(medication) };
 };
+
+function computeCompanyName(medication) {
+    return medication.company?.companyName ?? medication.manufacturingCompany;
+}
 
 export const getMedicationsService = async (query) => {
     const { search, categoryId, companyId } = query;
@@ -65,6 +69,7 @@ export const getMedicationsService = async (query) => {
             id: true,
             brandName: true,
             genericName: true,
+            manufacturingCompany: true,
             categoryId: true,
             unitPrice: true,
             category: {
@@ -77,7 +82,11 @@ export const getMedicationsService = async (query) => {
         orderBy: { createdAt: "desc" },
     });
 
-    return medications;
+    return medications.map(med => ({
+        ...med,
+        companyName: computeCompanyName(med),
+        company: undefined,
+    }));
 };
 
 export const getMedicationByIdService = async (id) => {
@@ -87,6 +96,7 @@ export const getMedicationByIdService = async (id) => {
             id: true,
             brandName: true,
             genericName: true,
+            manufacturingCompany: true,
             categoryId: true,
             unitPrice: true,
             category: {
@@ -102,7 +112,7 @@ export const getMedicationByIdService = async (id) => {
         throw new AppError("Medication not found", 404);
     }
 
-    return medication;
+    return { ...medication, companyName: computeCompanyName(medication) };
 };
 
 export const updateMedicationService = async (id, data, user) => {
@@ -147,7 +157,7 @@ export const updateMedicationService = async (id, data, user) => {
         },
     });
 
-    return medication;
+    return { ...medication, companyName: computeCompanyName(medication) };
 };
 
 export const getInStockMedicationsService = async (query) => {
@@ -183,6 +193,7 @@ export const getInStockMedicationsService = async (query) => {
             id: true,
             brandName: true,
             genericName: true,
+            manufacturingCompany: true,
             categoryId: true,
             unitPrice: true,
             category: {
@@ -195,7 +206,11 @@ export const getInStockMedicationsService = async (query) => {
         orderBy: { createdAt: "desc" },
     });
 
-    return medications;
+    return medications.map(med => ({
+        ...med,
+        companyName: computeCompanyName(med),
+        company: undefined,
+    }));
 };
 
 export const getUnlinkedMedicationsService = async () => {

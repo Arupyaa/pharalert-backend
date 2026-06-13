@@ -113,6 +113,7 @@ model Pharmacy {
   name             String
   email            String         @unique
   passwordHash     String
+  isEmailVerified  Boolean        @default(false)
   address          String
   latitude         Float
   longitude        Float
@@ -126,15 +127,15 @@ model Pharmacy {
 
   region Region @relation(fields: [regionId], references: [id])
 
-  purchases              Purchase[]
-  orders                 Order[]
-  inventory              PharmacyInventory[]
-  demandLogs             DemandLog[]
-  replacements           Replacement[]
-  subscriptions          Subscription[]
-  rejections             Rejection[]
-  inventoryAdjustments   InventoryAdjustment[]
-  refreshTokens          RefreshToken[]
+  purchases               Purchase[]
+  orders                  Order[]
+  inventory               PharmacyInventory[]
+  demandLogs              DemandLog[]
+  replacements            Replacement[]
+  subscriptions           Subscription[]
+  rejections              Rejection[]
+  inventoryAdjustments    InventoryAdjustment[]
+  refreshTokens           RefreshToken[]
   stockAlertSubscriptions StockAlertSubscription[]
 
   @@index([regionId])
@@ -147,17 +148,18 @@ model MedicationCompany {
   companyName      String
   email            String        @unique
   passwordHash     String
+  isEmailVerified  Boolean       @default(false)
   phoneNumber      String?
   documentImageUrl String
   accountStatus    AccountStatus
   createdAt        DateTime      @default(now())
 
-  medications           Medication[]
-  orders                Order[]
-  subscriptions         Subscription[]
-  rejections            Rejection[]
-  refreshTokens         RefreshToken[]
-  suggestedMedications  CompanySuggestedMedication[]
+  medications          Medication[]
+  orders               Order[]
+  subscriptions        Subscription[]
+  rejections           Rejection[]
+  refreshTokens        RefreshToken[]
+  suggestedMedications CompanySuggestedMedication[]
 
   @@index([companyName])
 }
@@ -168,8 +170,8 @@ model CompanySuggestedMedication {
   medicationId BigInt
   createdAt    DateTime @default(now())
 
-  company   MedicationCompany @relation(fields: [companyId], references: [id])
-  medication Medication       @relation(fields: [medicationId], references: [id])
+  company    MedicationCompany @relation(fields: [companyId], references: [id])
+  medication Medication        @relation(fields: [medicationId], references: [id])
 
   @@unique([companyId, medicationId])
   @@index([companyId])
@@ -177,17 +179,18 @@ model CompanySuggestedMedication {
 }
 
 model EndUser {
-  id           String          @id @default(uuid())
-  userName     String          @unique
-  email        String          @unique
-  passwordHash String
-  phoneNumber  String?
-  accountType  UserAccountType
-  address      String?
-  latitude     Float?
-  longitude    Float?
-  createdAt    DateTime        @default(now())
-  deletedAt    DateTime?
+  id              String          @id @default(uuid())
+  userName        String          @unique
+  email           String          @unique
+  passwordHash    String
+  isEmailVerified Boolean         @default(false)
+  phoneNumber     String?
+  accountType     UserAccountType
+  address         String?
+  latitude        Float?
+  longitude       Float?
+  createdAt       DateTime        @default(now())
+  deletedAt       DateTime?
 
   reservations  Reservation[]
   subscriptions Subscription[]
@@ -252,14 +255,14 @@ model Medication {
   replacementsFrom MedicationReplacement[] @relation("OriginalMedication")
   replacementsTo   MedicationReplacement[] @relation("ReplacementMedication")
 
-  pharmacyInventory       PharmacyInventory[]
-  demandLogs              DemandLog[]
-  reservationItems        ReservationItem[]
-  orderItems              OrderItem[]
-  stockAlertSubscriptions StockAlertSubscription[]
-  inventoryAdjustments    InventoryAdjustment[]
-  barcodes                 MedicationBarcode[]
-  purchaseItems            PurchaseItem[]
+  pharmacyInventory           PharmacyInventory[]
+  demandLogs                  DemandLog[]
+  reservationItems            ReservationItem[]
+  orderItems                  OrderItem[]
+  stockAlertSubscriptions     StockAlertSubscription[]
+  inventoryAdjustments        InventoryAdjustment[]
+  barcodes                    MedicationBarcode[]
+  purchaseItems               PurchaseItem[]
   companySuggestedMedications CompanySuggestedMedication[]
 
   @@index([categoryId])
@@ -336,13 +339,14 @@ model InventoryAdjustment {
 model Order {
   id                BigInt        @id @default(autoincrement())
   pharmacyId        String
-  supplierCompanyId String
+  supplierCompanyId String?
+  supplierName      String
   totalPrice        Decimal
   paymentStatus     PaymentStatus
   createdAt         DateTime      @default(now())
 
-  pharmacy        Pharmacy          @relation(fields: [pharmacyId], references: [id])
-  supplierCompany MedicationCompany @relation(fields: [supplierCompanyId], references: [id])
+  pharmacy        Pharmacy           @relation(fields: [pharmacyId], references: [id])
+  supplierCompany MedicationCompany? @relation(fields: [supplierCompanyId], references: [id])
 
   items                OrderItem[]
   payments             Payment[]
@@ -520,6 +524,8 @@ model StockAlertSubscription {
   region     Region?    @relation(fields: [regionId], references: [id])
   pharmacy   Pharmacy?  @relation(fields: [pharmacyId], references: [id])
 
+  @@unique([userId, medicationId, regionId])
+  @@unique([userId, medicationId, pharmacyId])
   @@index([userId])
   @@index([medicationId])
   @@index([regionId])

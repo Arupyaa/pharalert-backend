@@ -122,6 +122,39 @@ export const loginService =
                     : "FREE_USER";
         }
 
+        if (account.isEmailVerified === false) {
+            throw new AppError("Please verify your email before logging in", 403);
+        }
+
+        /*
+          Subscription expiry auto-downgrade
+        */
+
+        const SUBSCRIPTION_FK_MAP = {
+            pharmacy: { fkField: "pharmacyId", model: "pharmacy", statusField: "accountStatus", expiredValue: "inactive" },
+            company: { fkField: "companyId", model: "medicationCompany", statusField: "accountStatus", expiredValue: "inactive" },
+            user: { fkField: "userId", model: "endUser", statusField: "accountType", expiredValue: "free" },
+        };
+
+        if (role !== "admin") {
+            const subConfig = SUBSCRIPTION_FK_MAP[role];
+            const latestSub = await prisma.subscription.findFirst({
+                where: { [subConfig.fkField]: account.id },
+                orderBy: { endDate: "desc" },
+            });
+
+            if (latestSub && latestSub.endDate < new Date()) {
+                await prisma[subConfig.model].update({
+                    where: { id: account.id },
+                    data: { [subConfig.statusField]: subConfig.expiredValue },
+                });
+
+                account = await prisma[subConfig.model].findUnique({
+                    where: { id: account.id },
+                });
+            }
+        }
+
         /*
           Optional account status checks
         */

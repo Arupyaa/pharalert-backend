@@ -1,5 +1,6 @@
 import { getInventorySchema } from "../validators/getInventoryValidator.js";
-import { getInventoryService } from "../services/inventoryService.js";
+import { addInventorySchema } from "../validators/addInventoryValidator.js";
+import { getInventoryService, addInventoryService } from "../services/inventoryService.js";
 import { getInventoryByMedicationIdSchema } from "../validators/getInventoryByMedicationIdValidator.js";
 import { getInventoryByMedicationIdService } from "../services/inventoryService.js";
 
@@ -56,5 +57,22 @@ export const getInventoryByMedicationId = catchAsync(async (req, res) => {
     res.status(200).json({
         status: "success",
         ...serializeBigInt(inventory),
+    });
+});
+
+export const addInventory = catchAsync(async (req, res) => {
+    const result = addInventorySchema.safeParse(req.body);
+
+    if (!result.success) {
+        throw new AppError("Validation failed", 400, result.error.flatten());
+    }
+
+    const pharmacyId = req.user.id;
+
+    const adjustment = await addInventoryService(pharmacyId, result.data);
+
+    res.status(201).json({
+        status: "success",
+        data: serializeBigInt(adjustment),
     });
 });
