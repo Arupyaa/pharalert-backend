@@ -160,9 +160,15 @@ export const loginService =
           Unified JWT payload
         */
 
+        const accountStatus =
+            role === "admin" ? null
+            : role === "user" ? account.accountType
+            : account.accountStatus;
+
         const payload = {
             id: account.id,
             accountType,
+            accountStatus,
         };
 
         const accessToken =
@@ -195,5 +201,6 @@ export const loginService =
             accessToken,
             refreshToken,
             accountType,
+            accountStatus,
         };
     };
