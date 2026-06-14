@@ -152,6 +152,21 @@ export const loginService =
                 account = await prisma[subConfig.model].findUnique({
                     where: { id: account.id },
                 });
+            } else if (latestSub && latestSub.endDate > new Date() && account[subConfig.statusField] === subConfig.expiredValue) {
+                const activeValue = subConfig.statusField === "accountType" ? "paid" : "active";
+
+                await prisma[subConfig.model].update({
+                    where: { id: account.id },
+                    data: { [subConfig.statusField]: activeValue },
+                });
+
+                account = await prisma[subConfig.model].findUnique({
+                    where: { id: account.id },
+                });
+            }
+
+            if (role === "user") {
+                accountType = account.accountType === "paid" ? "PAID_USER" : "FREE_USER";
             }
         }
 

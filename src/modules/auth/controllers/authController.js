@@ -20,6 +20,7 @@ import {
 import { refreshService } from "../services/refreshService.js";
 import { identifyService } from "../services/identifyService.js";
 import { verifyEmailService } from "../services/verifyEmailService.js";
+import generateAccessToken from "../../../utils/generateAccessToken.js";
 import { resendVerificationService } from "../services/resendVerificationService.js";
 import { forgotPasswordService } from "../services/forgotPasswordService.js";
 import { resetPasswordService } from "../services/resetPasswordService.js";
@@ -297,11 +298,22 @@ export const logoutUser = catchAsync(async (req, res) => {
 // identify controller
 
 export const identifyUser = catchAsync(async (req, res) => {
-    const account = await identifyService(req.user.id, req.user.accountType);
-    res.status(200).json({
+    const result = await identifyService(req.user.id, req.user.accountType);
+
+    const response = {
         status: "success",
-        data: serializeBigInt(account),
-    });
+        data: serializeBigInt(result),
+    };
+
+    if (result.accountType !== req.user.accountType || result.accountStatus !== req.user.accountStatus) {
+        response.accessToken = generateAccessToken({
+            id: req.user.id,
+            accountType: result.accountType,
+            accountStatus: result.accountStatus,
+        });
+    }
+
+    res.status(200).json(response);
 });
 
 // refresh controller

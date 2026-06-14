@@ -7,7 +7,7 @@ const generateAccessToken = (
     payload,
     process.env.ACCESS_TOKEN_SECRET,
     {
-      expiresIn: "9h",
+      expiresIn: "15m",
     }
   );
 };

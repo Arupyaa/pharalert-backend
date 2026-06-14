@@ -83,8 +83,29 @@ export async function identifyService(userId, accountType) {
             if (subConfig.statusField === "accountType") {
                 accountType = account.accountType === "paid" ? "PAID_USER" : "FREE_USER";
             }
+        } else if (latestSub && new Date(latestSub.endDate) > new Date() && account[subConfig.statusField] === subConfig.expiredValue) {
+            const activeValue = subConfig.statusField === "accountType" ? "paid" : "active";
+
+            await prisma[subConfig.model].update({
+                where: { id: account.id },
+                data: { [subConfig.statusField]: activeValue },
+            });
+
+            account[subConfig.statusField] = activeValue;
+
+            if (subConfig.statusField === "accountType") {
+                accountType = account.accountType === "paid" ? "PAID_USER" : "FREE_USER";
+            }
+        }
+
+        if (subConfig.statusField === "accountType") {
+            accountType = account.accountType === "paid" ? "PAID_USER" : "FREE_USER";
         }
     }
 
-    return { ...account, accountType };
+    const accountStatus = accountType === "ADMIN" ? null
+        : (accountType === "FREE_USER" || accountType === "PAID_USER") ? account.accountType
+        : account.accountStatus;
+
+    return { ...account, accountType, accountStatus };
 }
