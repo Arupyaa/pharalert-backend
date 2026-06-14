@@ -76,6 +76,23 @@ export async function refreshService(refreshToken) {
             if (subConfig.statusField === "accountType") {
                 effectiveAccountType = account.accountType === "paid" ? "PAID_USER" : "FREE_USER";
             }
+        } else if (latestSub && new Date(latestSub.endDate) > new Date() && account[subConfig.statusField] === subConfig.expiredValue) {
+            const activeValue = subConfig.statusField === "accountType" ? "paid" : "active";
+
+            await prisma[subConfig.model].update({
+                where: { id: account.id },
+                data: { [subConfig.statusField]: activeValue },
+            });
+
+            account[subConfig.statusField] = activeValue;
+
+            if (subConfig.statusField === "accountType") {
+                effectiveAccountType = account.accountType === "paid" ? "PAID_USER" : "FREE_USER";
+            }
+        }
+
+        if (subConfig.statusField === "accountType") {
+            effectiveAccountType = account.accountType === "paid" ? "PAID_USER" : "FREE_USER";
         }
 
         accountStatus = effectiveAccountType === "FREE_USER" || effectiveAccountType === "PAID_USER"
