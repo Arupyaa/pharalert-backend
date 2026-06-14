@@ -219,10 +219,14 @@ export async function addInventoryService(pharmacyId, data) {
         throw new AppError("Medication not found", 404);
     }
 
+    let previousStock = 0;
+
     const result = await prisma.$transaction(async (tx) => {
         const existingInventory = await tx.pharmacyInventory.findFirst({
             where: { pharmacyId, medicationId },
         });
+
+        previousStock = existingInventory?.stock || 0;
 
         if (existingInventory) {
             await tx.pharmacyInventory.update({
@@ -256,6 +260,11 @@ export async function addInventoryService(pharmacyId, data) {
 
         return adjustment;
     });
+
+    if (previousStock === 0) {
+        const { checkAndNotifyStockAlert } = await import("../../user/services/stockAlertService.js");
+        await checkAndNotifyStockAlert(pharmacyId, medicationId);
+    }
 
     return result;
 }
