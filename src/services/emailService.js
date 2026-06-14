@@ -6,6 +6,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
 
 export async function sendOtpEmail(email, otp, subject = "Password Change OTP") {
     const mailOptions = {
@@ -45,7 +46,7 @@ export async function sendStockAlertEmail(email, medicationName, pharmacy, isReg
 }
 
 export async function sendVerificationEmail(email, token) {
-    const link = `${FRONTEND_URL}/auth/verify-email?token=${token}`;
+    const link = `${BACKEND_URL}/auth/verify-email?token=${token}`;
 
     const mailOptions = {
         from: process.env.EMAIL_FROM || "pharalert@local",
