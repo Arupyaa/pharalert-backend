@@ -191,7 +191,7 @@ export async function checkAndNotifyStockAlert(pharmacyId, medicationId) {
 
     const pharmacy = await prisma.pharmacy.findUnique({
         where: { id: pharmacyId },
-        select: { name: true, regionId: true },
+        select: { id: true, name: true, regionId: true },
     });
 
     if (!pharmacy) return;
@@ -211,13 +211,13 @@ export async function checkAndNotifyStockAlert(pharmacyId, medicationId) {
     });
 
     for (const sub of subscriptions) {
-        const isPharmacyLevel = sub.pharmacyId === pharmacyId;
-        const targetName = isPharmacyLevel ? pharmacy.name : `${pharmacy.name} (region)`;
+        const isRegionAlert = sub.pharmacyId !== pharmacyId;
 
         await sendStockAlertEmail(
             sub.user.email,
             medicationName,
-            isPharmacyLevel ? pharmacy.name : null
+            { id: pharmacy.id, name: pharmacy.name },
+            isRegionAlert
         );
 
         await prisma.stockAlertSubscription.update({
