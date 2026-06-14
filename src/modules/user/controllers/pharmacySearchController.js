@@ -1,8 +1,13 @@
 import { pharmacySearchSchema } from "../validators/pharmacySearchSchema.js";
-import { searchPharmaciesService } from "../services/pharmacySearchService.js";
+import { listPharmaciesService, searchPharmaciesService } from "../services/pharmacySearchService.js";
 import { serializeBigInt } from "../../../utils/serializeBigInt.js";
 import catchAsync from "../../../utils/catchAsync.js";
 import AppError from "../../../utils/AppError.js";
+
+export const listPharmacies = catchAsync(async (req, res) => {
+    const data = await listPharmaciesService();
+    res.status(200).json({ status: "success", data });
+});
 
 export const searchPharmacies = catchAsync(async (req, res) => {
     const result = pharmacySearchSchema.safeParse(req.query);

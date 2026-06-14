@@ -13,6 +13,35 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
     return Math.round(R * c * 100) / 100;
 };
 
+export const listPharmaciesService = async () => {
+    const pharmacies = await prisma.pharmacy.findMany({
+        where: {
+            accountStatus: "active",
+            deletedAt: null,
+        },
+        select: {
+            id: true,
+            name: true,
+            address: true,
+            latitude: true,
+            longitude: true,
+            region: {
+                select: { name: true },
+            },
+        },
+        orderBy: { name: "asc" },
+    });
+
+    return pharmacies.map((p) => ({
+        id: p.id,
+        name: p.name,
+        address: p.address,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        region: p.region.name,
+    }));
+};
+
 export const searchPharmaciesService = async ({
     latitude,
     longitude,
