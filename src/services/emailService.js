@@ -3,6 +3,10 @@ import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "localhost",
     port: Number(process.env.SMTP_PORT) || 1025,
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
 });
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
