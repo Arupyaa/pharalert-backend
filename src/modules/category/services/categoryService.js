@@ -6,3 +6,9 @@ export const getCategoriesService = async () => {
         orderBy: { categoryName: "asc" },
     });
 };
+
+export const createCategoryService = async (categoryName) => {
+    return await prisma.medicationCategory.create({
+        data: { categoryName },
+    });
+};

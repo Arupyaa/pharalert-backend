@@ -6,3 +6,9 @@ export const getRegionsService = async () => {
         orderBy: { name: "asc" },
     });
 };
+
+export const createRegionService = async (name) => {
+    return await prisma.region.create({
+        data: { name },
+    });
+};
