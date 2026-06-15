@@ -5,6 +5,18 @@ export async function createReservationService(userId, data) {
     const { items, deliveryDate } = data;
     const medicationIds = items.map((item) => item.medicationId);
 
+    const user = await prisma.endUser.findUnique({
+        where: { id: userId },
+        select: { address: true, phoneNumber: true, latitude: true, longitude: true },
+    });
+
+    if (!user.address || !user.phoneNumber || user.latitude == null || user.longitude == null) {
+        throw new AppError(
+            "Please complete your profile (address, phone number, and location) before making a reservation.",
+            400
+        );
+    }
+
     const stockAggregation = await prisma.pharmacyInventory.groupBy({
         by: ["medicationId"],
         where: {

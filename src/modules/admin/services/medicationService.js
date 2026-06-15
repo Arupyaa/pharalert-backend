@@ -19,9 +19,7 @@ export async function getAllMedicationsService(search, region, page, limit) {
     }
 
     if (region) {
-        where.pharmacy.region = {
-            name: { contains: region, mode: "insensitive" },
-        };
+        where.pharmacy.regionId = region;
     }
 
     const [inventory, totalRecords] = await Promise.all([
