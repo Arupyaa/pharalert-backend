@@ -10,7 +10,7 @@ export const getMedicationsQuerySchema = z.object({
     ),
     region: z.preprocess(
         emptyToUndefined,
-        z.string().optional()
+        z.coerce.bigint().positive().optional()
     ),
     page: z.preprocess(
         emptyToUndefined,
