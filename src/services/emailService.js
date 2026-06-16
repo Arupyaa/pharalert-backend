@@ -20,6 +20,14 @@ const transporter = nodemailer.createTransport({
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
 
+console.log({
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    user: process.env.SMTP_USER,
+    from: process.env.EMAIL_FROM,
+    pass: process.env.SMTP_PASS ? "***SET***" : "***NOT SET***",
+});
+
 export async function sendOtpEmail(email, otp, subject = "Password Change OTP") {
     const mailOptions = {
         from: process.env.EMAIL_FROM || "pharalert@local",
