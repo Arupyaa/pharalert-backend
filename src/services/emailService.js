@@ -11,6 +11,10 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false,
     },
+    family: 4,
+    connectionTimeout: 120000,
+    greetingTimeout: 120000,
+    socketTimeout: 120000,
 });
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -24,7 +28,12 @@ export async function sendOtpEmail(email, otp, subject = "Password Change OTP") 
         text: `Your OTP is: ${otp}\n\nThis code expires in 10 minutes.\n\nIf you did not request this, please ignore this email.`,
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+        await transporter.sendMail(mailOptions);
+    } catch (err) {
+        console.error(`Failed to send OTP email to ${email}:`, err.message);
+        throw err;
+    }
 }
 
 export async function sendStockAlertEmail(email, medicationName, pharmacy, isRegionAlert = false) {
@@ -50,7 +59,12 @@ export async function sendStockAlertEmail(email, medicationName, pharmacy, isReg
         text,
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+        await transporter.sendMail(mailOptions);
+    } catch (err) {
+        console.error(`Failed to send stock alert email to ${email}:`, err.message);
+        throw err;
+    }
 }
 
 export async function sendVerificationEmail(email, token) {
@@ -63,5 +77,10 @@ export async function sendVerificationEmail(email, token) {
         text: `Welcome to PharAlert!\n\nPlease verify your email address by clicking the link below:\n\n${link}\n\nThis link expires in 24 hours.\n\nIf you did not create an account, please ignore this email.`,
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+        await transporter.sendMail(mailOptions);
+    } catch (err) {
+        console.error(`Failed to send verification email to ${email}:`, err.message);
+        throw err;
+    }
 }
